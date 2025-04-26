@@ -14899,7 +14899,7 @@ html:not([dir=rtl]) .noUi-horizontal .noUi-handle {
 }
 
 .tf-timeline-content {
-  background-color: var(--white);
+  /* background-color: var(--white); */
   text-align: center;
 }
 .tf-timeline-content .tf-timeline-label {
