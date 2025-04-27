@@ -1,5 +1,13 @@
 <script setup lang="ts">
-// Root App component
+import { onMounted } from 'vue'
+import { useAuthStore } from '@/stores/authStore'
+
+const authStore = useAuthStore()
+
+onMounted(() => {
+  // Initialize authentication
+  authStore.initialize()
+})
 </script>
 
 <template>

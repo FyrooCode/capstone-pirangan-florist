@@ -102,17 +102,27 @@
               <a href="home-plant.html#canvasSearch" data-bs-toggle="offcanvas" aria-controls="offcanvasLeft"
                 class="link nav-icon-item text_green-1"><i class="icon icon-search"></i></a>
             </li>
-            <li class="nav-account">
-              <a href="home-plant.html#login" data-bs-toggle="modal" class="link nav-icon-item text_green-1"><i
-                  class="icon icon-account"></i></a>
+            <li class="nav-account" v-if="!authStore.isLoggedIn">
+              <a href="#login" data-bs-toggle="modal" class="link nav-icon-item text_green-1">
+                <i class="icon icon-account"></i>
+              </a>
+            </li>
+            <li class="nav-account" v-else>
+              <router-link to="/akun-saya" class="link nav-icon-item text_green-1">
+                <i class="icon icon-account"></i>
+              </router-link>
             </li>
             <li class="nav-wishlist">
-              <a href="wishlist.html" class="link nav-icon-item text_green-1"><i class="icon icon-heart"></i><span
-                  class="count-box bg_green-9">0</span></a>
+              <a href="wishlist.html" class="link nav-icon-item text_green-1">
+                <i class="icon icon-heart"></i>
+                <span class="count-box bg_green-9">0</span>
+              </a>
             </li>
             <li class="nav-cart">
-              <a href="home-plant.html#shoppingCart" data-bs-toggle="modal" class="link nav-icon-item text_green-1"><i
-                  class="icon icon-bag"></i><span class="count-box bg_green-9">0</span></a>
+              <a href="home-plant.html#shoppingCart" data-bs-toggle="modal" class="link nav-icon-item text_green-1">
+                <i class="icon icon-bag"></i>
+                <span class="count-box bg_green-9">0</span>
+              </a>
             </li>
           </ul>
         </div>
@@ -127,31 +137,70 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="header">
-          <div class="demo-title">Log in</div>
+          <div class="demo-title">Masuk</div>
           <span class="icon-close icon-close-popup" data-bs-dismiss="modal"></span>
         </div>
         <div class="tf-login-form">
-          <form class="" action="my-account.html" accept-charset="utf-8">
+          <form @submit.prevent="handleLogin">
+            <div v-if="authStore.error" class="alert alert-danger" role="alert">
+              {{ authStore.error }}
+            </div>
+
+            <!-- Enhanced alert for Google users -->
+            <div v-if="authStore.shouldUseGoogle" class="alert alert-info" role="alert">
+              <i class="icon icon-info me-2"></i>
+              Silakan gunakan tombol "Masuk dengan Google" di bawah ini
+              <div class="mt-2">
+                <button type="button" @click="handleGoogleLogin"
+                  class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center google-btn-alert">
+                  <img src="/user/images/google-icon.svg" alt="Google" class="me-2" style="height: 18px" />
+                  Masuk dengan Google
+                </button>
+              </div>
+            </div>
+
+            <!-- Google Sign In Button - Moved to top -->
+            <div class="w-100 mb-4">
+              <button type="button" @click="handleGoogleLogin"
+                class="tf-btn btn-outline animate-hover-btn radius-3 w-100 justify-content-center google-btn"
+                :disabled="authStore.loading">
+                <span>
+                  <img src="/user/images/google-icon.svg" alt="Google" class="me-2" style="height: 18px" />
+                  Masuk dengan Google
+                </span>
+              </button>
+            </div>
+
+            <div class="separator-or mb-4">
+              <span>atau</span>
+            </div>
+
             <div class="tf-field style-1">
-              <input class="tf-field-input tf-input" placeholder=" " type="email" name="" />
+              <input class="tf-field-input tf-input" placeholder=" " type="email" v-model="loginForm.email" required />
               <label class="tf-field-label" for="">Email *</label>
             </div>
             <div class="tf-field style-1">
-              <input class="tf-field-input tf-input" placeholder=" " type="password" name="" />
-              <label class="tf-field-label" for="">Password *</label>
+              <input class="tf-field-input tf-input" placeholder=" " type="password" v-model="loginForm.password"
+                required />
+              <label class="tf-field-label" for="">Kata Sandi *</label>
             </div>
             <div>
-              <a href="index.html#forgotPassword" data-bs-toggle="modal" class="btn-link link">Forgot your password?</a>
+              <a href="#forgotPassword" data-bs-toggle="modal" class="btn-link link">Lupa kata sandi?</a>
             </div>
             <div class="bottom">
               <div class="w-100">
-                <button type="submit" class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center">
-                  <span>Log in</span>
+                <button type="submit" class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center"
+                  :disabled="authStore.loading">
+                  <span v-if="!authStore.loading">Masuk</span>
+                  <span v-else>
+                    <i class="icon icon-loading"></i> Memuat...
+                  </span>
                 </button>
               </div>
+
               <div class="w-100">
-                <a href="index.html#register" data-bs-toggle="modal" class="btn-link fw-6 w-100 link">
-                  New customer? Create your account
+                <a href="#register" data-bs-toggle="modal" class="btn-link fw-6 w-100 link">
+                  Pelanggan baru? Buat akun
                   <i class="icon icon-arrow1-top-left"></i>
                 </a>
               </div>
@@ -161,32 +210,43 @@
       </div>
     </div>
   </div>
+
+  <!-- Password Reset Modal -->
   <div class="modal modalCentered fade form-sign-in modal-part-content" id="forgotPassword">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="header">
-          <div class="demo-title">Reset your password</div>
+          <div class="demo-title">Reset Kata Sandi</div>
           <span class="icon-close icon-close-popup" data-bs-dismiss="modal"></span>
         </div>
         <div class="tf-login-form">
-          <form class="">
+          <form @submit.prevent="handlePasswordReset">
+            <div v-if="passwordResetForm.message" class="alert"
+              :class="passwordResetForm.success ? 'alert-success' : 'alert-danger'" role="alert">
+              {{ passwordResetForm.message }}
+            </div>
+
             <div>
               <p>
-                Sign up for early Sale access plus tailored new arrivals, trends and promotions. To
-                opt out, click unsubscribe in our emails
+                Masukkan alamat email Anda dan kami akan mengirimkan link untuk reset kata sandi.
               </p>
             </div>
             <div class="tf-field style-1">
-              <input class="tf-field-input tf-input" placeholder=" " type="email" name="" />
+              <input class="tf-field-input tf-input" placeholder=" " type="email" v-model="passwordResetForm.email"
+                required />
               <label class="tf-field-label" for="">Email *</label>
             </div>
             <div>
-              <a href="index.html#login" data-bs-toggle="modal" class="btn-link link">Cancel</a>
+              <a href="#login" data-bs-toggle="modal" class="btn-link link">Batal</a>
             </div>
             <div class="bottom">
               <div class="w-100">
-                <button type="submit" class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center">
-                  <span>Reset password</span>
+                <button type="submit" class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center"
+                  :disabled="authStore.loading">
+                  <span v-if="!authStore.loading">Reset Kata Sandi</span>
+                  <span v-else>
+                    <i class="icon icon-loading"></i> Mengirim...
+                  </span>
                 </button>
               </div>
             </div>
@@ -195,39 +255,86 @@
       </div>
     </div>
   </div>
+
+  <!-- Registration Modal -->
   <div class="modal modalCentered fade form-sign-in modal-part-content" id="register">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="header">
-          <div class="demo-title">Register</div>
+          <div class="demo-title">Daftar</div>
           <span class="icon-close icon-close-popup" data-bs-dismiss="modal"></span>
         </div>
         <div class="tf-login-form">
-          <form class="">
+          <form @submit.prevent="handleRegister">
+            <div v-if="authStore.error && !authStore.shouldUseGoogle" class="alert alert-danger" role="alert">
+              {{ authStore.error }}
+            </div>
+
+            <div v-if="registerSuccessMessage" class="alert alert-success" role="alert">
+              {{ registerSuccessMessage }}
+            </div>
+
+            <!-- Enhanced alert for Google users -->
+            <div v-if="authStore.shouldUseGoogle" class="alert alert-info" role="alert">
+              <i class="icon icon-info me-2"></i>
+              Akun dengan email ini sudah terdaftar menggunakan Google.
+              <div class="mt-2">
+                <button type="button" @click="handleGoogleLogin"
+                  class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center google-btn-alert">
+                  <img src="/user/images/google-icon.svg" alt="Google" class="me-2" style="height: 18px" />
+                  Masuk dengan Google
+                </button>
+              </div>
+            </div>
+
+            <!-- Google Sign In Button for Registration -->
+            <div class="w-100 mb-4">
+              <button type="button" @click="handleGoogleLogin"
+                class="tf-btn btn-outline animate-hover-btn radius-3 w-100 justify-content-center google-btn"
+                :disabled="authStore.loading">
+                <span>
+                  <img src="/user/images/google-icon.svg" alt="Google" class="me-2" style="height: 18px" />
+                  Daftar dengan Google
+                </span>
+              </button>
+            </div>
+
+            <div class="separator-or mb-4">
+              <span>atau</span>
+            </div>
+
             <div class="tf-field style-1">
-              <input class="tf-field-input tf-input" placeholder=" " type="text" name="" />
-              <label class="tf-field-label" for="">First name</label>
+              <input class="tf-field-input tf-input" placeholder=" " type="text" v-model="registerForm.firstName"
+                required />
+              <label class="tf-field-label" for="">Nama Depan *</label>
             </div>
             <div class="tf-field style-1">
-              <input class="tf-field-input tf-input" placeholder=" " type="text" name="" />
-              <label class="tf-field-label" for="">Last name</label>
+              <input class="tf-field-input tf-input" placeholder=" " type="text" v-model="registerForm.lastName"
+                required />
+              <label class="tf-field-label" for="">Nama Belakang *</label>
             </div>
             <div class="tf-field style-1">
-              <input class="tf-field-input tf-input" placeholder=" " type="email" name="" />
+              <input class="tf-field-input tf-input" placeholder=" " type="email" v-model="registerForm.email"
+                required />
               <label class="tf-field-label" for="">Email *</label>
             </div>
             <div class="tf-field style-1">
-              <input class="tf-field-input tf-input" placeholder=" " type="password" name="" />
-              <label class="tf-field-label" for="">Password *</label>
+              <input class="tf-field-input tf-input" placeholder=" " type="password" v-model="registerForm.password"
+                required minlength="6" />
+              <label class="tf-field-label" for="">Kata Sandi *</label>
             </div>
             <div class="bottom">
               <div class="w-100">
-                <a href="register.html"
-                  class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center"><span>Register</span></a>
+                <button type="submit" class="tf-btn btn-fill animate-hover-btn radius-3 w-100 justify-content-center">
+                  <span v-if="!authStore.loading">Daftar</span>
+                  <span v-else>
+                    <i class="icon icon-loading"></i> Memproses...
+                  </span>
+                </button>
               </div>
               <div class="w-100">
-                <a href="index.html#login" data-bs-toggle="modal" class="btn-link fw-6 w-100 link">
-                  Already have an account? Log in here
+                <a href="#login" data-bs-toggle="modal" class="btn-link fw-6 w-100 link">
+                  Sudah punya akun? Masuk di sini
                   <i class="icon icon-arrow1-top-left"></i>
                 </a>
               </div>
@@ -242,7 +349,229 @@
 
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
-const router = useRouter();
+// Form data
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
+
+const loginForm = ref({
+  email: '',
+  password: ''
+})
+
+const registerForm = ref({
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: ''
+})
+
+const passwordResetForm = ref({
+  email: '',
+  message: '',
+  success: false
+})
+
+const registerSuccessMessage = ref('')
+
+// Event handlers
+const handleLogin = async () => {
+  const { success } = await authStore.signIn(loginForm.value.email, loginForm.value.password)
+
+  if (success) {
+    // Close the modal using the global bootstrap object
+    const loginModalEl = document.getElementById('login')
+    if (loginModalEl) {
+      const loginModal = bootstrap.Modal.getInstance(loginModalEl)
+      loginModal?.hide()
+    }
+
+    // Reset form
+    loginForm.value = { email: '', password: '' }
+
+    // Redirect if needed
+    const redirectPath = route.query.redirect as string
+    if (redirectPath) {
+      router.push(redirectPath)
+    }
+  }
+}
+
+const handleRegister = async () => {
+  try {
+    registerSuccessMessage.value = ''
+    // Temporarily store registration details
+    const tempEmail = registerForm.value.email
+    const tempPassword = registerForm.value.password
+    const tempFirstName = registerForm.value.firstName
+    const tempLastName = registerForm.value.lastName
+
+    // Call the signUp method
+    await authStore.signUp(
+      tempEmail,
+      tempPassword,
+      tempFirstName,
+      tempLastName
+    )
+
+    // Continue only if there are no errors
+    if (!authStore.error) {
+      // Set success message
+      registerSuccessMessage.value = 'Pendaftaran berhasil! Silakan periksa email Anda untuk konfirmasi.'
+
+      // Reset form
+      registerForm.value = { firstName: '', lastName: '', email: '', password: '' }
+
+      // Move to login modal after a delay
+      setTimeout(() => {
+        // Close the registration modal using the global bootstrap object
+        const registerModalEl = document.getElementById('register')
+        if (registerModalEl) {
+          const registerModal = bootstrap.Modal.getInstance(registerModalEl)
+          if (registerModal) {
+            registerModal.hide()
+          } else {
+            // Fallback if modal instance not found
+            document.querySelector('[data-bs-dismiss="modal"]')?.click()
+          }
+        }
+
+        // Open login modal using the global bootstrap object
+        const loginModalEl = document.getElementById('login')
+        if (loginModalEl) {
+          const loginModal = new bootstrap.Modal(loginModalEl)
+          loginModal.show()
+        }
+
+        // Clear any previous errors and messages
+        authStore.clearError()
+        registerSuccessMessage.value = ''
+      }, 3000)
+    }
+  } catch (error) {
+    console.error('Error during registration:', error)
+  }
+}
+
+const handlePasswordReset = async () => {
+  const { success, error } = await authStore.resetPassword(passwordResetForm.value.email)
+
+  if (success) {
+    passwordResetForm.value.message = 'Link reset kata sandi telah dikirim ke email Anda!'
+    passwordResetForm.value.success = true
+
+    // Reset form after 3 seconds and redirect to login
+    setTimeout(() => {
+      passwordResetForm.value = { email: '', message: '', success: false }
+
+      // Close the password reset modal using the global bootstrap object
+      const resetModalEl = document.getElementById('forgotPassword')
+      if (resetModalEl) {
+        const resetModal = bootstrap.Modal.getInstance(resetModalEl)
+        resetModal?.hide()
+      }
+
+      // Open login modal using the global bootstrap object
+      const loginModalEl = document.getElementById('login')
+      if (loginModalEl) {
+        const loginModal = new bootstrap.Modal(loginModalEl)
+        loginModal.show()
+      }
+    }, 3000)
+  } else {
+    passwordResetForm.value.message = error || 'Gagal mengirim email reset'
+    passwordResetForm.value.success = false
+  }
+}
+
+const handleGoogleLogin = async () => {
+  // Save the current path for redirect after auth
+  if (route.query.redirect) {
+    localStorage.setItem('redirectTo', route.query.redirect as string)
+  }
+
+  await authStore.googleSignIn()
+}
+
+const handleSignOut = async () => {
+  const success = await authStore.signOut()
+
+  // If sign out was successful and user is on account page, redirect to home
+  if (success && route.path === '/akun-saya') {
+    router.push('/')
+  }
+}
+
+// Initialize auth store when component mounts
+onMounted(() => {
+  authStore.initialize()
+
+  // Clear errors and messages when modals are hidden
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('hidden.bs.modal', () => {
+      authStore.clearError()
+      passwordResetForm.value.message = ''
+      registerSuccessMessage.value = ''
+    })
+  })
+})
 </script>
+
+<style scoped>
+/* Add any custom styles here */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert {
+  margin-bottom: 20px;
+}
+
+/* Add a separator style */
+.separator-or {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #999;
+}
+
+.separator-or::before,
+.separator-or::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #ddd;
+}
+
+.separator-or span {
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+/* Style for the Google button in alert */
+.google-btn-alert {
+  background-color: #4285F4;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  margin-top: 10px;
+}
+
+.google-btn-alert:hover {
+  background-color: #3367D6;
+}
+
+.google-btn-alert img {
+  background-color: white;
+  border-radius: 50%;
+  padding: 2px;
+}
+</style>
