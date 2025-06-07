@@ -1,5 +1,5 @@
 <template>
-  <div id="wrapper">
+  <div class="preload-wrapper bg_f5f5ec">
     <Navbar></Navbar>
 
     <RouterView></RouterView>

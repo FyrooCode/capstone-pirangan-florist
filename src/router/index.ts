@@ -2,12 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard } from './guards'
 import HomeView from '@/views/HomeView.vue'
 import UserLayout from '@/layouts/UserLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import LokasiOutletView from '@/views/LokasiOutletView.vue'
 import CaraOrderView from '@/views/CaraOrderView.vue'
 import HubungiKamiView from '@/views/HubungiKamiView.vue'
 import myAccount from '@/components/account/myAccount.vue'
 import NotFound from '@/views/404notfound.vue'
 import LoginView from '@/views/LoginView.vue'
+import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,6 +76,7 @@ const router = createRouter({
             requiresAuth: true
           }
         },
+
         // 404 page for undefined routes within the UserLayout
         {
           path: ':pathMatch(.*)*',
@@ -84,8 +87,31 @@ const router = createRouter({
           }
         }
       ],
+
+
+
+
     },
-    // Catch-all route for any paths not matched above
+
+    {
+      path: '/admin',
+      component: AdminLayout,
+      meta: {
+        title: 'Admin | Priangan Florist'
+      },
+      children: [
+        {
+          path: '', // Default child route
+          name: 'admin',
+          component: AdminDashboard,
+          meta: {
+            title: 'Dashboard Admin | Priangan Florist'
+          }
+        },
+        // Add any other admin routes here as needed
+      ],
+    },
+
     {
       path: '/:pathMatch(.*)*',
       redirect: { name: 'not-found' }
