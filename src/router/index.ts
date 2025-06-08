@@ -3,6 +3,7 @@ import { authGuard } from './guards'
 import HomeView from '@/views/HomeView.vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import ShopLayout from '@/layouts/ShopLayout.vue'
 import LokasiOutletView from '@/views/LokasiOutletView.vue'
 import CaraOrderView from '@/views/CaraOrderView.vue'
 import HubungiKamiView from '@/views/HubungiKamiView.vue'
@@ -79,7 +80,7 @@ const router = createRouter({
             requiresAuth: true
           }
         },
-                {
+        {
           path: 'katalog',
           name: 'katalog',
           component: KatalogView,
@@ -121,6 +122,27 @@ const router = createRouter({
 
 
 
+
+    },
+
+    {
+      path: '/',
+      component: ShopLayout,
+      children: [
+
+        {
+          path: 'katalog',
+          name: 'katalog',
+          component: KatalogView,
+          meta: {
+            title: 'Katalog Produk | Priangan Florist',
+            // requiresAuth: true
+          }
+        },
+
+
+
+      ],
 
     },
 

@@ -5,6 +5,7 @@
     <RouterView></RouterView>
 
     <Footer></Footer>
+    <MobileMenu></MobileMenu>
   </div>
 </template>
 
@@ -13,6 +14,7 @@ import { onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import Navbar from '@/components/navbar.vue'
 import Footer from '@/components/footer.vue'
+import MobileMenu from '@/components/mobileMenu.vue'
 
 // Initialize template functionality when component is mounted
 onMounted(async () => {
@@ -22,13 +24,7 @@ onMounted(async () => {
   // Ensure user CSS assets are loaded if not already loaded
   await ensureUserAssetsLoaded()
 
-  // Check if we're on a shop/katalog page
-  const isShopPage = route.path.includes('katalog') || route.path.includes('shop')
 
-  // Load shop.js only if we're on a shop page
-  if (isShopPage) {
-    await loadShopScript()
-  }
 
   // Wait for the next DOM update cycle
   await nextTick()
@@ -93,35 +89,7 @@ const ensureUserAssetsLoaded = async () => {
   }
 }
 
-// Function to load shop.js specifically for shop pages
-const loadShopScript = async () => {
-  const shopJsFile = '/user/js/shop.js'
-  
-  // Check if already loaded
-  if (window.loadedAssets?.js?.has(shopJsFile)) {
-    console.log('Shop.js already loaded')
-    return
-  }
 
-  return new Promise<void>((resolve) => {
-    const script = document.createElement('script')
-    script.type = 'text/javascript'
-    script.src = shopJsFile
-    script.async = false
-    script.onload = () => {
-      if (window.loadedAssets?.js) {
-        window.loadedAssets.js.add(shopJsFile)
-      }
-      console.log('Shop.js loaded successfully')
-      resolve()
-    }
-    script.onerror = () => {
-      console.warn('Failed to load shop.js')
-      resolve() // Still resolve to not block
-    }
-    document.body.appendChild(script)
-  })
-}
 </script>
 
 <style scoped>

@@ -33,7 +33,7 @@ const preloadAssets = async () => {
     '/user/js/wow.min.js',
     '/user/js/multiple-modal.js',
     '/user/js/nouislider.min.js',
-    '/user/js/shop.js', // Essential for shop filtering and layout switching
+    '/user/js/shop.js', // Shop-specific functionality
     '/user/js/main.js', // Main initialization - should be last
   ]
 
@@ -221,8 +221,8 @@ const preloadAssets = async () => {
         }
 
         // Initialize bootstrap select
-        if ($.fn.selectpicker) {
-          $('.image-select').selectpicker()
+        if (window.$.fn.selectpicker) {
+          window.$('.image-select').selectpicker()
         }
       }
     }
@@ -255,7 +255,7 @@ const preloadAssets = async () => {
 
           // Handle JVectorMap errors gracefully
           try {
-            if (typeof window.$ !== 'undefined' && typeof $.fn.vectorMap !== 'undefined') {
+            if (typeof window.$ !== 'undefined' && typeof window.$.fn.vectorMap !== 'undefined') {
               console.log('JVectorMap available')
               // Vector maps are initialized by the template's own scripts
             }
@@ -267,23 +267,105 @@ const preloadAssets = async () => {
           if (window.bootstrap) {
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
             if (tooltipTriggerList.length > 0) {
-              Array.from(tooltipTriggerList).forEach(el => new bootstrap.Tooltip(el))
+              Array.from(tooltipTriggerList).forEach(el => new window.bootstrap.Tooltip(el))
             }
 
             const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
             if (popoverTriggerList.length > 0) {
-              Array.from(popoverTriggerList).forEach(el => new bootstrap.Popover(el))
+              Array.from(popoverTriggerList).forEach(el => new window.bootstrap.Popover(el))
             }
           }
 
           // Initialize sidebar toggle functionality
-          $(document).on('click', '.button-show-hide', function () {
-            $('body').toggleClass('sidebar-hidden')
+          window.$(document).on('click', '.button-show-hide', function () {
+            window.$('body').toggleClass('sidebar-hidden')
             console.log('Sidebar toggle clicked, toggling sidebar-hidden class')
           })
         } catch (error) {
           console.warn('Some admin components failed to initialize (non-critical):', error)
           // Continue with app initialization anyway
+        }
+      }
+    }
+
+    // Initialize shop template function for ShopLayout.vue
+    window.initializeShopTemplate = function () {
+      if (window.$) {
+        console.log('Initializing shop template components...')
+
+        try {
+          // Initialize shop-specific components
+          if (typeof window.initShop === 'function') {
+            window.initShop()
+          }
+
+          // Initialize price range sliders (NoUISlider)
+          if (window.noUiSlider) {
+            const priceSliders = document.querySelectorAll('.price-slider')
+            priceSliders.forEach((slider) => {
+              if (!slider.noUiSlider) { // Prevent double initialization
+                window.noUiSlider.create(slider, {
+                  start: [0, 1000],
+                  connect: true,
+                  range: {
+                    'min': 0,
+                    'max': 2000
+                  },
+                  format: {
+                    to: function (value: number) {
+                      return Math.round(value)
+                    },
+                    from: function (value: string) {
+                      return Number(value)
+                    }
+                  }
+                })
+              }
+            })
+          }
+
+          // Initialize product filters and sorting
+          window.$('.filter-checkbox, .filter-radio').on('change', function (this: HTMLElement) {
+            console.log('Filter changed:', (this as any).value)
+            // Filter logic would be handled by shop.js
+          })
+
+          // Initialize product grid/list view toggles
+          window.$('.view-grid, .view-list').on('click', function (this: HTMLElement) {
+            console.log('View mode changed')
+            // View mode logic would be handled by shop.js
+          })
+
+          // Initialize quantity selectors
+          window.$('.quantity-selector .btn-increase, .quantity-selector .btn-decrease').on('click', function (this: HTMLElement, e: any) {
+            e.preventDefault()
+            const input = window.$(this).siblings('input[type="number"]')
+            let currentVal = parseInt(input.val() as string) || 1
+
+            if (window.$(this).hasClass('btn-increase')) {
+              input.val(currentVal + 1)
+            } else if (window.$(this).hasClass('btn-decrease') && currentVal > 1) {
+              input.val(currentVal - 1)
+            }
+          })
+
+          // Initialize add to cart functionality
+          window.$('.add-to-cart').on('click', function (this: HTMLElement, e: any) {
+            e.preventDefault()
+            console.log('Add to cart clicked')
+            // Add to cart logic would be handled by shop.js
+          })
+
+          // Initialize wishlist functionality
+          window.$('.add-to-wishlist').on('click', function (this: HTMLElement, e: any) {
+            e.preventDefault()
+            window.$(this).toggleClass('active')
+            console.log('Wishlist toggled')
+          })
+
+          console.log('Shop template initialization completed')
+        } catch (error) {
+          console.warn('Some shop components failed to initialize (non-critical):', error)
         }
       }
     }
@@ -301,33 +383,45 @@ declare global {
     bootstrap: any
     Swiper: any
     ApexCharts: any
+    Morris: any
+    noUiSlider: any
     initAdmin?: () => void
+    initShop?: () => void
     loadedAssets: {
       css: Set<string>
       js: Set<string>
     }
-    initializeUserTemplate?: () => void
-    initializeAdminTemplate?: () => void
+    initializeUserTemplate: () => void
+    initializeAdminTemplate: () => void
+    initializeShopTemplate: () => void
+  }
+
+  interface Element {
+    noUiSlider?: any
   }
 }
 
-// Initialize the app after assets are loaded
-; (async () => {
-  try {
-    await preloadAssets()
+// Declare global jQuery and bootstrap for TypeScript
+declare const $: any
+declare const bootstrap: any
 
-    const app = createApp(App)
+  // Initialize the app after assets are loaded
+  ; (async () => {
+    try {
+      await preloadAssets()
 
-    app.use(createPinia())
-    app.use(router)
+      const app = createApp(App)
 
-    app.mount('#app')
-  } catch (error) {
-    console.error('Failed to initialize app:', error)
-    // Fallback initialization in case of asset loading failure
-    const app = createApp(App)
-    app.use(createPinia())
-    app.use(router)
-    app.mount('#app')
-  }
-})()
+      app.use(createPinia())
+      app.use(router)
+
+      app.mount('#app')
+    } catch (error) {
+      console.error('Failed to initialize app:', error)
+      // Fallback initialization in case of asset loading failure
+      const app = createApp(App)
+      app.use(createPinia())
+      app.use(router)
+      app.mount('#app')
+    }
+  })()

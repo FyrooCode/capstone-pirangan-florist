@@ -2,12 +2,12 @@
 
 
 
-<Katalog></Katalog>
-    
+    <Katalog></Katalog>
+
 </template>
 
 <script setup lang="ts">
-import Katalog from '@/components/product/katalog.vue';
+import Katalog from '@/components/product/katalog/katalog.vue';
 
 
 
