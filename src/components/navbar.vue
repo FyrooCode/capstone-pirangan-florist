@@ -78,7 +78,7 @@
                   <router-link to="/" class="item-link text_green-1">Beranda</router-link>
                 </li>
                 <li class="menu-item">
-                  <a href="home-plant.html#" class="item-link text_green-1">Katalog</a>
+                  <router-link to="/katalog" class="item-link text_green-1">Katalog</router-link>
                 </li>
                 <li class="menu-item">
                   <router-link to="/cara-order" class="item-link text_green-1">Cara Order</router-link>

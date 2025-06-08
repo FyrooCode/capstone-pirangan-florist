@@ -23,12 +23,18 @@ const preloadAssets = async () => {
   // Core JS files with correct loading order
   // Important: jQuery must be the first to load
   const userJsFiles = [
-    '/user/js/jquery.min.js', // User jQuery
+    '/user/js/jquery.min.js', // User jQuery - must be first
     '/user/js/bootstrap.min.js',
     '/user/js/bootstrap-select.min.js',
-    '/user/js/swiper-bundle.min.js', // Added swiper bundle
+    '/user/js/swiper-bundle.min.js',
     '/user/js/carousel.js',
+    '/user/js/lazysize.min.js',
     '/user/js/count-down.js',
+    '/user/js/wow.min.js',
+    '/user/js/multiple-modal.js',
+    '/user/js/nouislider.min.js',
+    '/user/js/shop.js', // Essential for shop filtering and layout switching
+    '/user/js/main.js', // Main initialization - should be last
   ]
 
   // Admin template assets - Updated based on provided HTML

@@ -8,8 +8,11 @@ import CaraOrderView from '@/views/CaraOrderView.vue'
 import HubungiKamiView from '@/views/HubungiKamiView.vue'
 import myAccount from '@/components/account/myAccount.vue'
 import NotFound from '@/views/404notfound.vue'
+import UnauthorizedView from '@/views/UnauthorizedView.vue'
 import LoginView from '@/views/LoginView.vue'
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
+import DetailProduk from '@/views/ProductDetail.vue'
+import KatalogView from '@/views/KatalogView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -76,6 +79,34 @@ const router = createRouter({
             requiresAuth: true
           }
         },
+                {
+          path: 'katalog',
+          name: 'katalog',
+          component: KatalogView,
+          meta: {
+            title: 'Katalog Produk | Priangan Florist',
+            // requiresAuth: true
+          }
+        },
+        {
+          path: 'detail-produk',
+          name: 'Detail Produk',
+          component: DetailProduk,
+          meta: {
+            title: 'Detail Produk | Priangan Florist',
+            // requiresAuth: true
+          }
+        },
+
+        // Unauthorized access page
+        {
+          path: 'unauthorized',
+          name: 'unauthorized',
+          component: UnauthorizedView,
+          meta: {
+            title: 'Tidak Memiliki Akses | Priangan Florist'
+          }
+        },
 
         // 404 page for undefined routes within the UserLayout
         {
@@ -97,7 +128,9 @@ const router = createRouter({
       path: '/admin',
       component: AdminLayout,
       meta: {
-        title: 'Admin | Priangan Florist'
+        title: 'Admin | Priangan Florist',
+        requiresAuth: true,
+        requiresAdmin: true
       },
       children: [
         {
@@ -105,7 +138,9 @@ const router = createRouter({
           name: 'admin',
           component: AdminDashboard,
           meta: {
-            title: 'Dashboard Admin | Priangan Florist'
+            title: 'Dashboard Admin | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
           }
         },
         // Add any other admin routes here as needed

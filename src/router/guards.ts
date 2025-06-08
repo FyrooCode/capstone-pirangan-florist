@@ -9,6 +9,12 @@ export const authGuard = async (
 ) => {
     const authStore = useAuthStore()
 
+    // Skip auth check for unauthorized page
+    if (to.name === 'unauthorized') {
+        console.log('Navigating to unauthorized page, skipping auth check')
+        return next()
+    }
+
     // Make sure auth is initialized
     if (authStore.loading) {
         // Wait for auth to initialize
@@ -22,6 +28,21 @@ export const authGuard = async (
         })
     }
 
+    // Check if route requires admin role (check this FIRST before general auth)
+    if (to.meta.requiresAdmin || to.path.startsWith('/admin')) {
+        if (!authStore.isLoggedIn) {
+            // Not logged in, redirect to login page for admin routes
+            return next({ path: '/login', query: { redirect: to.fullPath } })
+        }
+        
+        if (authStore.userRole !== 'admin') {
+            // Logged in but not admin, redirect to unauthorized page
+            console.warn('Access denied: Customer attempted to access admin area')
+            return next({ name: 'unauthorized' })
+        }
+    }
+
+    // Check if route requires authentication (for non-admin routes)
     if (!authStore.isLoggedIn && to.meta.requiresAuth) {
         // Save the intended destination for redirection after login
         const redirectPath = to.fullPath
