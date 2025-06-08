@@ -1,7 +1,5 @@
 <template>
-
-
-
+    <shopFilter></shopFilter>
 
     <div class="tf-row-flex">
         <div class="wrapper-control-shop tf-shop-content">
@@ -606,7 +604,91 @@
 
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import shopFilter from './shopFilter.vue'
 
+onMounted(() => {
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        initializeShopLayoutSwitcher()
+        setupLayoutEventListener()
+    }, 100)
+})
 
+function initializeShopLayoutSwitcher() {
+    const $ = (window as any).$ || (window as any).jQuery
+    if (!$) return
 
+    // Grid layout switching functionality
+    $('.tf-view-layout-switch').on('click', function (this: HTMLElement) {
+        const layout = $(this).data('value-layout')
+
+        // Remove active class from all switches
+        $('.tf-view-layout-switch').removeClass('active')
+        // Add active class to clicked switch  
+        $(this).addClass('active')
+
+        if (layout === 'list') {
+            // Show list layout, hide grid layout
+            $('#gridLayout').hide()
+            $('#listLayout').show()
+            $('.wrapper-control-shop')
+                .addClass('listLayout-wrapper')
+                .removeClass('gridLayout-wrapper')
+        } else {
+            // Show grid layout, hide list layout
+            $('#listLayout').hide()
+            setGridLayout(layout)
+        }
+    })
+
+    // Sort dropdown functionality
+    $('.select-item').on('click', function (this: HTMLElement) {
+        const sortText = $(this).find('.text-value-item').text()
+
+        // Update active state
+        $('.select-item').removeClass('active')
+        $(this).addClass('active')
+
+        // Update display text
+        $('.text-sort-value').text(sortText)
+    })
+}
+
+function setupLayoutEventListener() {
+    const $ = (window as any).$ || (window as any).jQuery
+    if (!$) return
+
+    // Listen for layout change events from shopFilter component
+    $(document).on('layoutChanged', function (event: any, data: any) {
+        const layout = data.layout
+
+        if (layout === 'list') {
+            // Show list layout, hide grid layout
+            $('#gridLayout').hide()
+            $('#listLayout').show()
+            $('.wrapper-control-shop')
+                .addClass('listLayout-wrapper')
+                .removeClass('gridLayout-wrapper')
+        } else {
+            // Show grid layout, hide list layout
+            $('#listLayout').hide()
+            setGridLayout(layout)
+        }
+    })
+}
+
+function setGridLayout(layoutClass: string) {
+    const $ = (window as any).$ || (window as any).jQuery
+    if (!$) return
+
+    $('#gridLayout')
+        .show()
+        .removeClass()
+        .addClass(`wrapper-shop tf-grid-layout ${layoutClass}`)
+
+    $('.wrapper-control-shop')
+        .addClass('gridLayout-wrapper')
+        .removeClass('listLayout-wrapper')
+}
 </script>

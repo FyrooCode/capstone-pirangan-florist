@@ -8,8 +8,6 @@
             <section class="flat-spacing-1">
                 <div class="container">
 
-                    <ShopFilter></ShopFilter>
-
                     <router-view></router-view>
 
 

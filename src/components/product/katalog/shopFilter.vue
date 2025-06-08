@@ -54,3 +54,44 @@
         </div>
     </div>
 </template>
+
+<script setup lang="ts">
+import { onMounted } from 'vue'
+
+onMounted(() => {
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        initializeFilterControls()
+    }, 100)
+})
+
+function initializeFilterControls() {
+    const $ = (window as any).$ || (window as any).jQuery
+    if (!$) return
+
+    // Sort dropdown functionality
+    $('.select-item').on('click', function (this: HTMLElement) {
+        const sortText = $(this).find('.text-value-item').text()
+
+        // Update active state
+        $('.select-item').removeClass('active')
+        $(this).addClass('active')
+
+        // Update display text
+        $('.text-sort-value').text(sortText)
+    })
+
+    // Layout switch functionality  
+    $('.tf-view-layout-switch').on('click', function (this: HTMLElement) {
+        const layout = $(this).data('value-layout')
+
+        // Remove active class from all switches
+        $('.tf-view-layout-switch').removeClass('active')
+        // Add active class to clicked switch  
+        $(this).addClass('active')
+
+        // Trigger custom event for katalog component to handle
+        $(document).trigger('layoutChanged', { layout })
+    })
+}
+</script>
