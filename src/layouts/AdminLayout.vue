@@ -47,10 +47,4 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-/* Admin layout specific styles */
-/* .admin-content-container {
-    padding: 20px;
-    min-height: calc(100vh - 80px);
-} */
-</style>
+<style scoped></style>

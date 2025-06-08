@@ -14,6 +14,8 @@ import LoginView from '@/views/LoginView.vue'
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import DetailProduk from '@/views/ProductDetail.vue'
 import KatalogView from '@/views/KatalogView.vue'
+// import AdminAuth from '@/layouts/adminAuth.vue'
+// import AdminLogin from '@/views/admin/AdminLogin.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -146,6 +148,9 @@ const router = createRouter({
 
     },
 
+
+
+
     {
       path: '/admin',
       component: AdminLayout,
@@ -168,6 +173,24 @@ const router = createRouter({
         // Add any other admin routes here as needed
       ],
     },
+
+    // {
+    //   path: '/admin/auth',
+    //   component: AdminAuth,
+    //   children: [
+    //     {
+    //       path: 'login',
+    //       name: 'admin-login', // Changed from 'admin'
+    //       component: AdminLogin,
+    //       meta: {
+    //         title: 'Admin Login | Priangan Florist'
+    //       }
+    //     }
+    //   ]
+    // },
+
+
+
 
     {
       path: '/:pathMatch(.*)*',
