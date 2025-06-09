@@ -121,6 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         console.log('Ensuring profile exists for user:', user.value.id)
+        console.log('userData received:', userData)
 
         try {
             // Check if profile already exists
@@ -166,34 +167,43 @@ export const useAuthStore = defineStore('auth', () => {
                 userRole.value = existingProfile.role
                 return existingProfile
             } else {
-                console.log('Creating new profile for Google user:', user.value.id)
+                console.log('Creating new profile for user:', user.value.id)
 
-                // Extract name from Google auth metadata if available
+                // Extract name from userData parameter first, then fallback to user metadata
                 let firstName = userData?.firstName || ''
                 let lastName = userData?.lastName || ''
 
-                if (!firstName && !lastName && user.value.app_metadata?.provider === 'google') {
-                    // For Google Authentication, parse the name from user metadata
-                    console.log('Extracting name from Google metadata:', user.value.user_metadata)
-                    firstName = user.value.user_metadata?.given_name ||
-                        user.value.user_metadata?.name?.split(' ')[0] || ''
+                // If no firstName/lastName provided in userData, try to extract from user metadata
+                if (!firstName && !lastName) {
+                    if (user.value.app_metadata?.provider === 'google') {
+                        // For Google Authentication, parse the name from user metadata
+                        console.log('Extracting name from Google metadata:', user.value.user_metadata)
+                        firstName = user.value.user_metadata?.given_name ||
+                            user.value.user_metadata?.name?.split(' ')[0] || ''
 
-                    lastName = user.value.user_metadata?.family_name ||
-                        (user.value.user_metadata?.name?.split(' ').length > 1 ?
-                            user.value.user_metadata?.name?.split(' ').slice(1).join(' ') : '')
+                        lastName = user.value.user_metadata?.family_name ||
+                            (user.value.user_metadata?.name?.split(' ').length > 1 ?
+                                user.value.user_metadata?.name?.split(' ').slice(1).join(' ') : '')
+                    } else {
+                        // For email/password registration, try to get from auth metadata
+                        firstName = user.value.user_metadata?.first_name || ''
+                        lastName = user.value.user_metadata?.last_name || ''
+                    }
                 }
+
+                console.log('Using firstName:', firstName, 'lastName:', lastName)
 
                 // Create profile with default role (customer)
                 const profileData = {
                     user_id: user.value.id,
-                    first_name: firstName,
-                    last_name: lastName,
+                    first_name: firstName || null,  // Ensure we don't pass empty strings
+                    last_name: lastName || null,    // Ensure we don't pass empty strings
                     role: 'customer', // Default role
                     created_at: now,
                     updated_at: now
                 }
 
-                console.log('Attempting to insert profile data:', JSON.stringify(profileData))
+                console.log('Attempting to insert profile data:', JSON.stringify(profileData, null, 2))
 
                 // First attempt: Insert using standard client
                 const { data: insertedProfile, error: insertError } = await supabase
@@ -271,68 +281,65 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    // Check if email is already registered and what provider it uses
-    const checkEmailProvider = async (email: string) => {
-        loading.value = true
-        error.value = null
-
+    // Function to check if email is already registered
+    const checkEmailExists = async (email: string) => {
         try {
-            const { error: signInError } = await supabase.auth.signInWithOtp({
+            // Use Supabase's built-in method to check if user exists
+            // This will attempt to send a magic link but we'll catch the response
+            const { data, error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    // Just check if email exists, don't actually send an email
-                    shouldCreateUser: false
+                    shouldCreateUser: false // This prevents creating a new user
                 }
             })
 
-            if (signInError) {
-                if (signInError.message.includes('Email not confirmed')) {
-                    // Email exists but is not confirmed
-                    return { exists: true, provider: 'email' }
-                }
-                if (signInError.message.includes('Email auth provider')) {
-                    // Email exists in email auth provider
-                    return { exists: true, provider: 'email' }
-                }
-                if (signInError.message.includes('Google')) {
-                    // Email exists in Google auth provider
-                    return { exists: true, provider: 'google' }
-                }
-                throw signInError
+            // If no error, it means the email exists in the system
+            if (!error) {
+                return { exists: true, provider: 'email' }
             }
 
-            // If we get here, email doesn't exist
+            // Check specific error messages to determine if email exists
+            if (error.message.includes('Email not confirmed')) {
+                return { exists: true, provider: 'email' }
+            }
+
+            if (error.message.includes('only email is allowed') || 
+                error.message.includes('email not found') ||
+                error.message.includes('invalid email')) {
+                return { exists: false, provider: null }
+            }
+
+            // For any other error, assume email doesn't exist to allow registration
             return { exists: false, provider: null }
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error checking email:', err)
+            // If we can't check, allow registration to proceed
             return { exists: false, provider: null }
-        } finally {
-            loading.value = false
         }
     }
 
-    // Modified sign up function to handle existing accounts better and create profile
+    // Enhanced sign up function with proper email checking
     const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
         loading.value = true
         error.value = null
         shouldUseGoogle.value = false
 
         try {
-            // Check if email already exists and with what provider
-            const { exists, provider } = await checkEmailProvider(email)
-
+            // First, check if email already exists
+            console.log('Checking if email exists:', email)
+            const { exists, provider } = await checkEmailExists(email)
+            
             if (exists) {
                 if (provider === 'google') {
-                    shouldUseGoogle.value = true
-                    error.value = 'Email sudah terdaftar dengan Google. Silakan login menggunakan Google.'
-                    return { success: false }
+                    error.value = 'Email sudah terdaftar dengan akun Google. Silakan gunakan "Masuk dengan Google".'
                 } else {
-                    error.value = 'Email sudah terdaftar. Silakan login.'
-                    return { success: false }
+                    error.value = 'Email sudah terdaftar. Silakan login atau gunakan email lain.'
                 }
+                return { success: false }
             }
 
-            // Sign up user using email/password
+            // Proceed with sign up since email doesn't exist
+            console.log('Email not found, proceeding with registration')
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
@@ -346,11 +353,24 @@ export const useAuthStore = defineStore('auth', () => {
             })
 
             if (signUpError) {
+                // Handle specific Supabase errors
+                if (signUpError.message.includes('User already registered') || 
+                    signUpError.message.includes('email address is already registered')) {
+                    error.value = 'Email sudah terdaftar. Silakan login atau gunakan email lain.'
+                    return { success: false }
+                }
                 throw signUpError
             }
 
+            // Handle successful registration
             if (data?.user) {
-                // Create user profile
+                console.log('User registered successfully:', {
+                    id: data.user.id,
+                    email: data.user.email,
+                    confirmed: !!data.user.email_confirmed_at
+                })
+
+                // Create user profile for new registrations
                 await ensureProfile({
                     firstName,
                     lastName
@@ -358,19 +378,29 @@ export const useAuthStore = defineStore('auth', () => {
 
                 return { success: true, user: data.user }
             } else {
-                error.value = 'Gagal membuat akun'
+                error.value = 'Gagal membuat akun. Silakan coba lagi.'
                 return { success: false }
             }
         } catch (err: any) {
             console.error('Registration error:', err)
-            error.value = err.message || 'Error saat mendaftar'
+            
+            // Handle specific error messages
+            if (err.message.includes('User already registered') || 
+                err.message.includes('email address is already registered') ||
+                err.message.includes('already been registered')) {
+                error.value = 'Email sudah terdaftar. Silakan login.'
+            } else if (err.message.includes('rate limit')) {
+                error.value = 'Terlalu banyak percobaan. Silakan coba lagi dalam beberapa menit.'
+            } else {
+                error.value = err.message || 'Error saat mendaftar'
+            }
             return { success: false }
         } finally {
             loading.value = false
         }
     }
 
-    // Modify sign in to fetch user profile
+    // Enhanced sign in with better error handling
     const signIn = async (email: string, password: string) => {
         loading.value = true
         error.value = null
@@ -383,18 +413,21 @@ export const useAuthStore = defineStore('auth', () => {
             })
 
             if (signInError) {
-                // Check if this is a Google account
-                if (signInError.message.includes('provider') && signInError.message.includes('email')) {
-                    const { provider } = await checkEmailProvider(email)
-
-                    if (provider === 'google') {
-                        shouldUseGoogle.value = true
-                        error.value = 'Akun ini terdaftar dengan Google. Silakan gunakan login Google.'
-                        return { success: false }
+                // For invalid credentials, check if the user might be using Google auth
+                if (signInError.message.includes('Invalid login credentials')) {
+                    // Try to check if this email exists (but don't show the details to user)
+                    const { exists } = await checkEmailExists(email)
+                    
+                    if (exists) {
+                        // Email exists but password is wrong - could be Google user
+                        error.value = 'Email atau kata sandi tidak valid. Jika Anda mendaftar dengan Google, silakan gunakan tombol "Masuk dengan Google".'
+                    } else {
+                        error.value = 'Email atau kata sandi tidak valid.'
                     }
+                } else {
+                    throw signInError
                 }
-
-                throw signInError
+                return { success: false }
             }
 
             if (data?.user) {
@@ -450,7 +483,7 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (err: any) {
             console.error('Google login error:', err)
             error.value = err.message || 'Error signing in with Google'
-            return { success: false, error: error.value }
+            return { success: false, error: error.value || undefined }
         } finally {
             loading.value = false
         }
@@ -474,7 +507,7 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (err: any) {
             console.error('Password reset error:', err)
             error.value = err.message || 'Error saat reset kata sandi'
-            return { success: false, error: error.value }
+            return { success: false, error: error.value || undefined }
         } finally {
             loading.value = false
         }
@@ -500,7 +533,7 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (err: any) {
             console.error('Error signing out:', err)
             error.value = err.message || 'Error signing out'
-            return { success: false, error: error.value }
+            return { success: false, error: error.value || undefined }
         } finally {
             loading.value = false
         }
