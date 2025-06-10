@@ -46,10 +46,10 @@
                                 </div>
                                 <div class="text-tiny">entries</div>
                             </div>
-                            <form class="form-search">
+                            <form class="form-search" @submit.prevent="handleSearch">
                                 <fieldset class="name">
-                                    <input type="text" placeholder="Search here..." class="" name="name" tabindex="2"
-                                        value="" aria-required="true" required="">
+                                    <input v-model="searchQuery" type="text" placeholder="Search here..." class=""
+                                        name="name" tabindex="2" aria-required="true">
                                 </fieldset>
                                 <div class="button-submit">
                                     <button class="" type="submit"><i class="icon-search"></i></button>
@@ -64,135 +64,40 @@
                                 <div class="body-title">Category</div>
                             </li>
                             <li>
-                                <div class="body-title">Quantity</div>
+                                <div class="body-title">Deskripsi</div>
                             </li>
                             <li>
-                                <div class="body-title">Sale</div>
+                                <div class="body-title">Jumlah produk</div>
                             </li>
-                            <li>
-                                <div class="body-title">Start date</div>
-                            </li>
+
                             <li>
                                 <div class="body-title">Action</div>
                             </li>
                         </ul>
                         <ul class="flex flex-column">
-                            <li class="wg-product item-row gap20">
-                                <div class="name">
-                                    <div class="image">
-                                        <img src="/admin/images/products/product-1.jpg" alt="">
-                                    </div>
-                                    <div class="title line-clamp-2 mb-0">
-                                        <a href="category-list.html#" class="body-text">Oversized Motif T-shirt</a>
-                                    </div>
-                                </div>
-                                <div class="body-text text-main-dark mt-4">1,638</div>
-                                <div class="body-text text-main-dark mt-4">20</div>
-                                <div class="body-text text-main-dark mt-4">20 Nov 2023</div>
-                                <div class="list-icon-function">
-                                    <div class="item eye">
-                                        <i class="icon-eye"></i>
-                                    </div>
-                                    <div class="item edit">
-                                        <i class="icon-edit-3"></i>
-                                    </div>
-                                    <div class="item trash">
-                                        <i class="icon-trash-2"></i>
-                                    </div>
-                                </div>
+                            <li v-if="isLoading" class="wg-product item-row gap20">
+                                <div class="body-text">Loading categories...</div>
                             </li>
-                            <li class="wg-product item-row gap20">
-                                <div class="name">
-                                    <div class="image">
-                                        <img src="/admin/images/products/product-2.jpg" alt="">
-                                    </div>
-                                    <div class="title line-clamp-2 mb-0">
-                                        <a href="category-list.html#" class="body-text">Oversized Motif T-shirt</a>
-                                    </div>
-                                </div>
-                                <div class="body-text text-main-dark mt-4">1,638</div>
-                                <div class="body-text text-main-dark mt-4">20</div>
-                                <div class="body-text text-main-dark mt-4">20 Nov 2023</div>
-                                <div class="list-icon-function">
-                                    <div class="item eye">
-                                        <i class="icon-eye"></i>
-                                    </div>
-                                    <div class="item edit">
-                                        <i class="icon-edit-3"></i>
-                                    </div>
-                                    <div class="item trash">
-                                        <i class="icon-trash-2"></i>
-                                    </div>
-                                </div>
+                            <li v-else-if="categories.length === 0" class="wg-product item-row gap20">
+                                <div class="body-text">No categories found.</div>
                             </li>
-                            <li class="wg-product item-row gap20">
+                            <li v-else v-for="category in filteredCategories" :key="category.id"
+                                class="wg-product item-row gap20">
                                 <div class="name">
-                                    <div class="image">
-                                        <img src="/admin/images/products/product-3.jpg" alt="">
-                                    </div>
                                     <div class="title line-clamp-2 mb-0">
-                                        <a href="category-list.html#" class="body-text">Oversized Motif T-shirt</a>
+                                        <span class="body-text">{{ category.nama_kategori }}</span>
                                     </div>
                                 </div>
-                                <div class="body-text text-main-dark mt-4">1,638</div>
-                                <div class="body-text text-main-dark mt-4">20</div>
-                                <div class="body-text text-main-dark mt-4">20 Nov 2023</div>
+                                <div class="body-text text-main-dark mt-4">{{ category.deskripsi }}</div>
+                                <div class="body-text text-main-dark mt-4">{{ category.product_count || 0 }}</div>
                                 <div class="list-icon-function">
-                                    <div class="item eye">
+                                    <div class="item eye" @click="viewCategory(category)" title="View">
                                         <i class="icon-eye"></i>
                                     </div>
-                                    <div class="item edit">
+                                    <div class="item edit" @click="editCategory(category)" title="Edit">
                                         <i class="icon-edit-3"></i>
                                     </div>
-                                    <div class="item trash">
-                                        <i class="icon-trash-2"></i>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="wg-product item-row gap20">
-                                <div class="name">
-                                    <div class="image">
-                                        <img src="/admin/images/products/product-4.jpg" alt="">
-                                    </div>
-                                    <div class="title line-clamp-2 mb-0">
-                                        <a href="category-list.html#" class="body-text">Oversized Motif T-shirt</a>
-                                    </div>
-                                </div>
-                                <div class="body-text text-main-dark mt-4">1,638</div>
-                                <div class="body-text text-main-dark mt-4">20</div>
-                                <div class="body-text text-main-dark mt-4">20 Nov 2023</div>
-                                <div class="list-icon-function">
-                                    <div class="item eye">
-                                        <i class="icon-eye"></i>
-                                    </div>
-                                    <div class="item edit">
-                                        <i class="icon-edit-3"></i>
-                                    </div>
-                                    <div class="item trash">
-                                        <i class="icon-trash-2"></i>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="wg-product item-row gap20">
-                                <div class="name">
-                                    <div class="image">
-                                        <img src="/admin/images/products/product-5.jpg" alt="">
-                                    </div>
-                                    <div class="title line-clamp-2 mb-0">
-                                        <a href="category-list.html#" class="body-text">Oversized Motif T-shirt</a>
-                                    </div>
-                                </div>
-                                <div class="body-text text-main-dark mt-4">1,638</div>
-                                <div class="body-text text-main-dark mt-4">20</div>
-                                <div class="body-text text-main-dark mt-4">20 Nov 2023</div>
-                                <div class="list-icon-function">
-                                    <div class="item eye">
-                                        <i class="icon-eye"></i>
-                                    </div>
-                                    <div class="item edit">
-                                        <i class="icon-edit-3"></i>
-                                    </div>
-                                    <div class="item trash">
+                                    <div class="item trash" @click="deleteCategory(category)" title="Delete">
                                         <i class="icon-trash-2"></i>
                                     </div>
                                 </div>
@@ -201,24 +106,21 @@
                     </div>
                     <div class="divider"></div>
                     <div class="flex items-center justify-between flex-wrap gap10">
-                        <div class="text-tiny">Showing 10 entries</div>
-                        <ul class="wg-pagination">
+                        <div class="text-tiny">Showing {{ filteredCategories.length }} of {{ categories.length }}
+                            entries</div>
+                        <div v-if="errorMessage" class="text-tiny" style="color: red;">{{ errorMessage }}</div>
+                        <!-- Pagination can be implemented later for large datasets -->
+                        <!-- <ul class="wg-pagination">
                             <li>
-                                <a href="category-list.html#"><i class="icon-chevron-left"></i></a>
-                            </li>
-                            <li>
-                                <a href="category-list.html#">1</a>
+                                <a href="#"><i class="icon-chevron-left"></i></a>
                             </li>
                             <li class="active">
-                                <a href="category-list.html#">2</a>
+                                <a href="#">1</a>
                             </li>
                             <li>
-                                <a href="category-list.html#">3</a>
+                                <a href="#"><i class="icon-chevron-right"></i></a>
                             </li>
-                            <li>
-                                <a href="category-list.html#"><i class="icon-chevron-right"></i></a>
-                            </li>
-                        </ul>
+                        </ul> -->
                     </div>
                 </div>
                 <!-- /all-category -->
@@ -232,8 +134,125 @@
                 Design by Themesflat All rights reserved</div>
         </div>
         <!-- /bottom-page -->
-    </div>
-    <!-- /main-content -->
-
-
+    </div> <!-- /main-content -->
 </template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue';
+import { supabase } from '../../utils/supabase';
+
+// Reactive data
+const categories = ref([]);
+const searchQuery = ref('');
+const isLoading = ref(false);
+const errorMessage = ref('');
+
+// Computed property for filtered categories
+const filteredCategories = computed(() => {
+    if (!searchQuery.value.trim()) {
+        return categories.value;
+    }
+    return categories.value.filter(category =>
+        category.nama_kategori.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        category.deskripsi.toLowerCase().includes(searchQuery.value.toLowerCase())
+    );
+});
+
+// Fetch categories from Supabase
+const fetchCategories = async () => {
+    isLoading.value = true;
+    errorMessage.value = '';
+
+    try {
+        // Fetch categories with product count
+        const { data, error } = await supabase
+            .from('kategori')
+            .select(`
+                id,
+                nama_kategori,
+                deskripsi,
+                created_at
+            `);
+
+        if (error) throw error;
+
+        // Get product counts for each category
+        const categoriesWithCount = await Promise.all(
+            data.map(async (category) => {
+                const { count } = await supabase
+                    .from('produk')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('kategori_id', category.id);
+
+                return {
+                    ...category,
+                    product_count: count || 0
+                };
+            })
+        );
+
+        categories.value = categoriesWithCount;
+    } catch (error) {
+        errorMessage.value = `Error fetching categories: ${error.message}`;
+        console.error('Error:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+// Search handler
+const handleSearch = () => {
+    // The filtering is handled by the computed property
+    // This function can be used for additional search logic if needed
+};
+
+// Category actions
+const viewCategory = (category) => {
+    console.log('View category:', category);
+    // TODO: Implement view functionality
+    alert(`Viewing category: ${category.nama_kategori}`);
+};
+
+const editCategory = (category) => {
+    console.log('Edit category:', category);
+    // TODO: Implement edit functionality
+    alert(`Edit category: ${category.nama_kategori}`);
+};
+
+const deleteCategory = async (category) => {
+    if (!confirm(`Are you sure you want to delete "${category.nama_kategori}"?`)) {
+        return;
+    }
+
+    try {
+        // Check if category has products
+        const { count } = await supabase
+            .from('produk')
+            .select('*', { count: 'exact', head: true })
+            .eq('kategori_id', category.id);
+
+        if (count > 0) {
+            alert(`Cannot delete category "${category.nama_kategori}" because it has ${count} product(s) associated with it.`);
+            return;
+        }
+
+        const { error } = await supabase
+            .from('kategori')
+            .delete()
+            .eq('id', category.id);
+
+        if (error) throw error;
+
+        alert('Category deleted successfully!');
+        fetchCategories(); // Refresh the list
+    } catch (error) {
+        alert(`Error deleting category: ${error.message}`);
+        console.error('Error:', error);
+    }
+};
+
+// Load categories when component mounts
+onMounted(() => {
+    fetchCategories();
+});
+</script>
