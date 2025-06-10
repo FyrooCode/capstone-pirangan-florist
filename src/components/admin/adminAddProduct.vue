@@ -22,8 +22,13 @@
                                 </div>
                                 <div v-if="imagePreviews.length > 0" class="flex gap20 flex-wrap mt-20">
                                     <div v-for="(src, index) in imagePreviews" :key="index" class="item"
-                                        style="width: 100px; height: 100px; object-fit: cover;">
-                                        <img :src="src" alt="Image Preview">
+                                        style="width: 100px; height: 100px; position: relative; border-radius: 8px; overflow: hidden;">
+                                        <img :src="src" alt="Image Preview"
+                                            style="width: 100%; height: 100%; object-fit: cover;">
+                                        <button type="button" @click="removeImage(index)"
+                                            style="position: absolute; top: 4px; right: 4px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;">
+                                            ×
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -49,13 +54,13 @@
                         <div class="cols-lg gap22">
                             <fieldset class="price">
                                 <div class="body-title mb-10">Price <span class="tf-color-1">*</span></div>
-                                <input v-model.number="productPrice" class="" type="number" placeholder="Price"
-                                    required>
+                                <input v-model.number="productPrice" class="" type="number" placeholder="Price" min="0"
+                                    step="0.01" required>
                             </fieldset>
                             <fieldset class="stock">
                                 <div class="body-title mb-10">Stock <span class="tf-color-1">*</span></div>
                                 <input v-model.number="productStock" class="" type="number" placeholder="Enter Stock"
-                                    required>
+                                    min="0" required>
                             </fieldset>
                         </div>
 
@@ -120,21 +125,60 @@ onMounted(async () => {
 // Function to handle file selection from the input
 const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
+
     // We allow up to 5 images as discussed
     if (files.length > 5) {
-        alert('You can only upload a maximum of 5 images.');
+        errorMessage.value = 'You can only upload a maximum of 5 images.';
         return;
     }
+
+    // Validate file types and sizes
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    for (const file of files) {
+        if (!validTypes.includes(file.type)) {
+            errorMessage.value = `Invalid file type: ${file.name}. Only JPEG, PNG, GIF, and WebP files are allowed.`;
+            return;
+        }
+        if (file.size > maxSize) {
+            errorMessage.value = `File too large: ${file.name}. Maximum size is 5MB.`;
+            return;
+        }
+    }
+
+    // Clear any previous error messages
+    errorMessage.value = '';
+
     selectedFiles.value = files;
 
-    // Create local URLs for previewing images before upload
+    // Clean up previous object URLs to prevent memory leaks
+    imagePreviews.value.forEach(url => URL.revokeObjectURL(url));    // Create local URLs for previewing images before upload
     imagePreviews.value = files.map(file => URL.createObjectURL(file));
+};
+
+// Function to remove a specific image from the preview
+const removeImage = (index) => {
+    // Revoke the object URL to prevent memory leaks
+    URL.revokeObjectURL(imagePreviews.value[index]);
+
+    // Remove from both arrays
+    selectedFiles.value.splice(index, 1);
+    imagePreviews.value.splice(index, 1);
+
+    // Update file input - create new FileList
+    const dt = new DataTransfer();
+    selectedFiles.value.forEach(file => dt.items.add(file));
+    const fileInput = document.getElementById('myFile');
+    if (fileInput) {
+        fileInput.files = dt.files;
+    }
 };
 
 // Main function to add the product
 const addProduct = async () => {
-    if (!productName.value || !selectedCategory.value || productPrice.value <= 0) {
-        errorMessage.value = 'Please fill out all required fields.';
+    if (!productName.value.trim() || !selectedCategory.value || productPrice.value <= 0 || productStock.value < 0) {
+        errorMessage.value = 'Please fill out all required fields correctly.';
         return;
     }
 
@@ -147,8 +191,8 @@ const addProduct = async () => {
         const { data: productData, error: productError } = await supabase
             .from('produk')
             .insert({
-                nama_produk: productName.value,
-                deskripsi: productDescription.value,
+                nama_produk: productName.value.trim(),
+                deskripsi: productDescription.value.trim() || null,
                 harga: productPrice.value,
                 stok: productStock.value,
                 kategori_id: selectedCategory.value,
@@ -160,16 +204,15 @@ const addProduct = async () => {
 
         const productId = productData.id;
 
-        // Step 2: If there are files, upload them to Supabase Storage
+        // Step 2: If there are no files, we're done
         if (selectedFiles.value.length === 0) {
             successMessage.value = 'Product added successfully without images!';
             resetForm();
             return;
-        }
-
+        }        // Step 3: Upload files to Supabase Storage
         const uploadPromises = selectedFiles.value.map(file => {
             const filePath = `${productId}/${Date.now()}_${file.name}`;
-            return supabase.storage.from('product-images').upload(filePath, file);
+            return supabase.storage.from('gambar-produk').upload(filePath, file);
         });
 
         const uploadResults = await Promise.all(uploadPromises);
@@ -178,15 +221,13 @@ const addProduct = async () => {
         const uploadErrors = uploadResults.filter(result => result.error);
         if (uploadErrors.length > 0) {
             throw new Error(`Failed to upload images: ${uploadErrors.map(e => e.error.message).join(', ')}`);
-        }
-
-        // Step 3: Get the public URLs for all uploaded images
+        }        // Step 4: Get the public URLs for all uploaded images
         const imageUrls = uploadResults.map(result => {
-            const { data } = supabase.storage.from('product-images').getPublicUrl(result.data.path);
+            const { data } = supabase.storage.from('gambar-produk').getPublicUrl(result.data.path);
             return data.publicUrl;
         });
 
-        // Step 4: Update the product row with the array of image URLs
+        // Step 5: Update the product row with the array of image URLs
         const { error: updateError } = await supabase
             .from('produk')
             .update({ image_urls: imageUrls })
@@ -199,7 +240,7 @@ const addProduct = async () => {
 
     } catch (error) {
         errorMessage.value = `Error: ${error.message}`;
-        console.error(error);
+        console.error('Error adding product:', error);
     } finally {
         isLoading.value = false;
     }
@@ -212,7 +253,15 @@ const resetForm = () => {
     productStock.value = 0;
     selectedCategory.value = null;
     selectedFiles.value = [];
+    imagePreviews.value.forEach(url => URL.revokeObjectURL(url)); // Clean up object URLs
     imagePreviews.value = [];
-    document.getElementById('myFile').value = ''; // Clear file input
+    errorMessage.value = '';
+    successMessage.value = '';
+
+    // Clear file input
+    const fileInput = document.getElementById('myFile');
+    if (fileInput) {
+        fileInput.value = '';
+    }
 }
 </script>
