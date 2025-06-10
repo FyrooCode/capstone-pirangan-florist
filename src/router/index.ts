@@ -97,9 +97,10 @@ const router = createRouter({
           }
         },
         {
-          path: 'detail-produk',
-          name: 'Detail Produk',
+          path: 'detail-produk/:id', // Changed path
+          name: 'ProductDetail',    // Changed name
           component: DetailProduk,
+          props: true,              // Added props
           meta: {
             title: 'Detail Produk | Priangan Florist',
             // requiresAuth: true
@@ -146,9 +147,36 @@ const router = createRouter({
             // requiresAuth: true
           }
         },
+        {
+          path: 'detail-produk/:id', // Changed path
+          name: 'ProductDetail',    // Changed name
+          component: DetailProduk,
+          props: true,              // Added props
+          meta: {
+            title: 'Detail Produk | Priangan Florist',
+            // requiresAuth: true
+          }
+        },
 
+        // Unauthorized access page
+        {
+          path: 'unauthorized',
+          name: 'unauthorized',
+          component: UnauthorizedView,
+          meta: {
+            title: 'Tidak Memiliki Akses | Priangan Florist'
+          }
+        },
 
-
+        // 404 page for undefined routes within the UserLayout
+        {
+          path: ':pathMatch(.*)*',
+          name: 'not-found',
+          component: NotFound,
+          meta: {
+            title: 'Halaman Tidak Ditemukan | Priangan Florist'
+          }
+        }
       ],
 
     },
