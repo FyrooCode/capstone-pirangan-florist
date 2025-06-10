@@ -19,6 +19,8 @@ import AdminAddProductView from '@/views/admin/AdminAddProductView.vue'
 // import AdminLogin from '@/views/admin/AdminLogin.vue'
 
 import AdminProduct from '@/views/admin/AdminProduct.vue'
+import AdminCategory from '@/components/admin/adminCategoryList.vue'
+import AdminAddCategoryView from '@/views/admin/AdminAddCategoryView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -189,6 +191,26 @@ const router = createRouter({
           component: AdminAddProductView,
           meta: {
             title: 'tambah produk | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'list-kategori', // Default child route
+          name: 'list kategori',
+          component: AdminCategory,
+          meta: {
+            title: 'list kategori | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'tambah-kategori', // Default child route
+          name: 'tambah kategori',
+          component: AdminAddCategoryView,
+          meta: {
+            title: 'Tambah kategori | Priangan Florist',
             requiresAuth: true,
             requiresAdmin: true
           }
