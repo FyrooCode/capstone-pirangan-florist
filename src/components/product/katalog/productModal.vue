@@ -268,8 +268,7 @@
                                 <span class="icon icon-check"></span>
                             </a>
                             <div class="w-100">
-                                <a href="shop-right-sidebar.html#" class="btns-full">Buy with <img
-                                        src="/user/images/payments/paypal.png" alt=""></a>
+                                <a href="shop-right-sidebar.html#" class="btns-full">Beli Sekarang</a>
                                 <a href="shop-right-sidebar.html#" class="payment-more-option">More payment options</a>
                             </div>
                         </form>
@@ -403,8 +402,7 @@
                                         <span class="icon icon-check"></span>
                                     </a>
                                     <div class="w-100">
-                                        <a href="shop-right-sidebar.html#" class="btns-full">Buy with <img
-                                                src="/user/images/payments/paypal.png" alt=""></a>
+                                        <a href="shop-right-sidebar.html#" class="btns-full">Beli Sekarang</a>
                                         <a href="shop-right-sidebar.html#" class="payment-more-option">More payment
                                             options</a>
                                     </div>

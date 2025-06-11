@@ -135,7 +135,7 @@
                                                 </a>
                                                 
                                                 <div class="w-100" v-if="isInStock">
-                                                    <a href="#" class="btns-full">Buy with <img src="/user/images/payments/paypal.png" alt=""></a>
+                                                    <a href="#" class="btns-full">Beli sekarang </a>
                                                     <a href="#" class="payment-more-option">More payment options</a>
                                                 </div>
                                             </form>

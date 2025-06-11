@@ -73,24 +73,27 @@
                                             <div class="price fw-6">{{ formatPrice(item.produk.harga) }}</div>
                                             <div class="tf-mini-cart-btns">
                                                 <div class="wg-quantity small">
-                                                    <span 
+                                                    <button 
+                                                        type="button"
                                                         class="btn-quantity minus-btn"
                                                         @click="decreaseQuantity(item)"
-                                                        :class="{ disabled: item.jumlah <= 1 }"
-                                                    >-</span>
+                                                        :disabled="item.jumlah <= 1"
+                                                        :class="{ 'btn-disabled': item.jumlah <= 1 }"
+                                                    >-</button>
                                                     <input 
-                                                        type="text" 
+                                                        type="number" 
                                                         :value="item.jumlah"
-                                                        @input="updateQuantity(item, $event)"
-                                                        @blur="validateQuantity(item, $event)"
+                                                        readonly
                                                         min="1"
                                                         :max="item.produk.stok"
                                                     >
-                                                    <span 
+                                                    <button 
+                                                        type="button"
                                                         class="btn-quantity plus-btn"
                                                         @click="increaseQuantity(item)"
-                                                        :class="{ disabled: item.jumlah >= item.produk.stok }"
-                                                    >+</span>
+                                                        :disabled="item.jumlah >= item.produk.stok"
+                                                        :class="{ 'btn-disabled': item.jumlah >= item.produk.stok }"
+                                                    >+</button>
                                                 </div>
                                                 <div class="tf-mini-cart-remove" @click="removeItem(item)">
                                                     Remove
@@ -226,46 +229,53 @@ const handleImageError = (event: Event) => {
 
 // Cart item functions
 const increaseQuantity = async (item: any) => {
-    if (item.jumlah < item.produk.stok) {
-        await cartStore.updateQuantity(item.id, item.jumlah + 1)
+    if (item.jumlah >= item.produk.stok) {
+        alert(`Maximum stock available is ${item.produk.stok}`)
+        return
     }
+    
+    await updateQuantity(item, item.jumlah + 1)
 }
 
 const decreaseQuantity = async (item: any) => {
-    if (item.jumlah > 1) {
-        await cartStore.updateQuantity(item.id, item.jumlah - 1)
+    if (item.jumlah <= 1) {
+        // Ask if user wants to remove the item completely
+        if (confirm(`Remove ${item.produk.nama_produk} from cart?`)) {
+            await removeItem(item)
+        }
+        return
     }
+    
+    await updateQuantity(item, item.jumlah - 1)
 }
 
-const updateQuantity = async (item: any, event: Event) => {
-    const target = event.target as HTMLInputElement
-    const newQuantity = parseInt(target.value) || 1
-    
+const updateQuantity = async (item: any, newQuantity: number) => {
     // Validate quantity bounds
-    if (newQuantity >= 1 && newQuantity <= item.produk.stok) {
-        await cartStore.updateQuantity(item.id, newQuantity)
-    } else {
-        // Reset to current quantity if invalid
-        target.value = item.jumlah.toString()
+    if (newQuantity < 1) {
+        newQuantity = 1
+    } else if (newQuantity > item.produk.stok) {
+        alert(`Maximum stock available is ${item.produk.stok}`)
+        newQuantity = item.produk.stok
     }
-}
-
-const validateQuantity = (item: any, event: Event) => {
-    const target = event.target as HTMLInputElement
-    const value = parseInt(target.value) || 1
     
-    if (value < 1) {
-        target.value = '1'
-        cartStore.updateQuantity(item.id, 1)
-    } else if (value > item.produk.stok) {
-        target.value = item.produk.stok.toString()
-        cartStore.updateQuantity(item.id, item.produk.stok)
+    if (newQuantity !== item.jumlah) {
+        try {
+            await cartStore.updateQuantity(item.id, newQuantity)
+        } catch (error) {
+            console.error('Error updating quantity:', error)
+            alert('Failed to update quantity. Please try again.')
+        }
     }
 }
 
 const removeItem = async (item: any) => {
     if (confirm(`Remove ${item.produk.nama_produk} from cart?`)) {
-        await cartStore.removeFromCart(item.id)
+        try {
+            await cartStore.removeFromCart(item.id)
+        } catch (error) {
+            console.error('Error removing item:', error)
+            alert('Failed to remove item. Please try again.')
+        }
     }
 }
 
@@ -320,6 +330,34 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.btn-quantity {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 4px 8px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.btn-quantity:hover {
+    background-color: #f8f9fa;
+    border-radius: 3px;
+}
+
+.btn-quantity:active {
+    background-color: #e9ecef;
+    transform: scale(0.95);
+}
+
+.btn-quantity:disabled,
+.btn-quantity.btn-disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .btn-quantity.disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -340,6 +378,7 @@ onMounted(() => {
     color: #dc3545;
     font-size: 12px;
     text-decoration: underline;
+    transition: color 0.2s ease;
 }
 
 .tf-mini-cart-remove:hover {
@@ -368,15 +407,50 @@ onMounted(() => {
     border: none;
 }
 
+.wg-quantity {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
 .wg-quantity input {
     text-align: center;
-    border: 1px solid #ddd;
+    border: none;
     width: 60px;
     padding: 4px;
+    font-size: 14px;
+    background: #fff;
 }
 
 .wg-quantity input:focus {
     outline: none;
     border-color: #007bff;
+}
+
+.wg-quantity input:read-only {
+    background-color: #f8f9fa;
+}
+
+.wg-quantity .btn-quantity {
+    border-radius: 0;
+    min-width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #ddd;
+    background-color: #fff;
+}
+
+.wg-quantity .btn-quantity:last-child {
+    border-right: none;
+    border-left: 1px solid #ddd;
+}
+
+.wg-quantity .btn-quantity:hover:not(:disabled) {
+    background-color: #007bff;
+    color: white;
 }
 </style>
