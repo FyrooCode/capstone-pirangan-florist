@@ -1,4 +1,6 @@
 <template>
+
+    
     <shopFilter></shopFilter>
 
     <!-- Quick Add Modal -->

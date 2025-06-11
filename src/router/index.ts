@@ -14,6 +14,7 @@ import LoginView from '@/views/LoginView.vue'
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import DetailProduk from '@/views/ProductDetail.vue'
 import KatalogView from '@/views/KatalogView.vue'
+import CheckoutView from '@/views/CheckoutView.vue'
 import AdminAddProductView from '@/views/admin/AdminAddProductView.vue'
 // import AdminAuth from '@/layouts/adminAuth.vue'
 // import AdminLogin from '@/views/admin/AdminLogin.vue'
@@ -106,6 +107,7 @@ const router = createRouter({
             // requiresAuth: true
           }
         },
+        
 
         // Unauthorized access page
         {
@@ -144,6 +146,16 @@ const router = createRouter({
           component: KatalogView,
           meta: {
             title: 'Katalog Produk | Priangan Florist',
+            // requiresAuth: true
+          }
+        },
+        {
+          path: 'checkout', // Changed path
+          name: 'checkout',    // Changed name
+          component: CheckoutView,
+          props: true,              // Added props
+          meta: {
+            title: 'Checkout | Priangan Florist',
             // requiresAuth: true
           }
         },
