@@ -7,6 +7,12 @@
         @addToCart="handleAddToCartFromModal"
         @addToWishlist="addToWishlist" />
 
+    <!-- Quick View Modal -->
+    <modalQuickView 
+        :selectedProduct="selectedProductForQuickView" 
+        @addToCart="handleAddToCartFromModal"
+        @addToWishlist="addToWishlist" />
+
     <div class="tf-row-flex">
         <div class="wrapper-control-shop tf-shop-content">
             <div class="meta-filter-shop">
@@ -51,7 +57,7 @@
                             <a href="#" @click.prevent="addToWishlist(product)"
                                 class="box-icon wishlist style-3 hover-tooltip"><span class="icon icon-heart"></span>
                                 <span class="tooltip">Add to Wishlist</span></a>
-                            <a href="#" @click.prevent="viewProductDetail(product.id)"
+                            <a href="#" @click.prevent="openQuickViewModal(product)"
                                 class="box-icon quickview style-3 hover-tooltip"><span
                                     class="icon icon-view"></span><span class="tooltip">Quick view</span></a>
                         </div>
@@ -86,7 +92,7 @@
                                 <span class="icon icon-heart"></span>
                                 <span class="tooltip">Add to Wishlist</span>
                             </a>
-                            <a href="#" @click.prevent="viewProductDetail(product.id)"
+                            <a href="#" @click.prevent="openQuickViewModal(product)"
                                 class="box-icon bg_white quickview tf-btn-loading">
                                 <span class="icon icon-view"></span>
                                 <span class="tooltip">Quick view</span>
@@ -245,6 +251,7 @@ import { useRouter } from 'vue-router';
 import { useCartStore } from '../../../stores/cartStore';
 import shopFilter from './shopFilter.vue';
 import modalQuickAdd from './modalQuickAdd.vue';
+import modalQuickView from './modalQuickView.vue';
 
 const router = useRouter();
 const cartStore = useCartStore();
@@ -257,6 +264,7 @@ const isLoading = ref(false);
 const isLoadingCategories = ref(false);
 const errorMessage = ref('');
 const selectedProductForQuickAdd = ref<any | null>(null);
+const selectedProductForQuickView = ref<any | null>(null);
 
 // Computed property for filtered products by category
 const filteredProducts = computed(() => {
@@ -400,6 +408,19 @@ const addToWishlist = (product: any) => {
 
 const viewProductDetail = (productId: number) => {
     router.push({ name: 'ProductDetail', params: { id: productId } });
+};
+
+const openQuickViewModal = (product: any) => {
+    selectedProductForQuickView.value = product;
+    
+    // Show the modal using Bootstrap
+    setTimeout(() => {
+        const modal = document.getElementById('quick_view');
+        if (modal) {
+            const bootstrapModal = new (window as any).bootstrap.Modal(modal);
+            bootstrapModal.show();
+        }
+    }, 100);
 };
 
 

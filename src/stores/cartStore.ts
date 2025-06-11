@@ -13,7 +13,10 @@ interface Product {
 
 interface CartItem {
     id: number
-    quantity: number
+    user_id: string
+    produk_id: number
+    jumlah: number
+    created_at: string
     produk: Product
 }
 
@@ -24,43 +27,14 @@ export const useCartStore = defineStore('cart', () => {
 
     // Computed properties
     const itemCount = computed(() => {
-        return cartItems.value.reduce((total, item) => total + item.quantity, 0)
+        return cartItems.value.reduce((total, item) => total + item.jumlah, 0)
     })
 
     const totalPrice = computed(() => {
         return cartItems.value.reduce((total, item) => {
-            return total + (item.produk.harga * item.quantity)
+            return total + (item.produk.harga * item.jumlah)
         }, 0)
-    })
-
-    // Get or create cart for user
-    const getOrCreateCart = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) throw new Error('User not authenticated')
-
-        // Check if cart exists
-        let { data: cart, error } = await supabase
-            .from('keranjang')
-            .select('id')
-            .eq('user_id', user.id)
-            .single()
-
-        if (error && error.code === 'PGRST116') {
-            // Cart doesn't exist, create one
-            const { data: newCart, error: createError } = await supabase
-                .from('keranjang')
-                .insert({ user_id: user.id })
-                .select('id')
-                .single()
-
-            if (createError) throw createError
-            cart = newCart
-        }
-
-        return cart.id
-    }
-
-    // Fetch cart items
+    })    // Fetch cart items
     const fetchCartItems = async () => {
         isLoading.value = true
         error.value = ''
@@ -73,25 +47,36 @@ export const useCartStore = defineStore('cart', () => {
             }
 
             const { data, error: fetchError } = await supabase
-                .from('keranjang_item')
+                .from('keranjang')
                 .select(`
                     id,
-                    quantity,
-                    produk:produk_id (
+                    user_id,
+                    produk_id,
+                    jumlah,
+                    created_at,
+                    produk!inner (
                         id,
                         nama_produk,
                         harga,
                         stok,
-                        image_urls
-                    ),
-                    keranjang!inner (
-                        user_id
+                        image_urls,
+                        deskripsi
                     )
                 `)
-                .eq('keranjang.user_id', user.id)
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
 
             if (fetchError) throw fetchError
-            cartItems.value = data || []
+            
+            // Transform the data to match our CartItem interface
+            cartItems.value = (data || []).map((item: any) => ({
+                id: item.id,
+                user_id: item.user_id,
+                produk_id: item.produk_id,
+                jumlah: item.jumlah,
+                created_at: item.created_at,
+                produk: Array.isArray(item.produk) ? item.produk[0] : item.produk
+            })) as CartItem[]
         } catch (err: any) {
             error.value = err.message
             console.error('Error fetching cart:', err)
@@ -100,38 +85,39 @@ export const useCartStore = defineStore('cart', () => {
         }
     }
 
-    // Add item to cart
+        // Add item to cart
     const addToCart = async (product: Product, quantity = 1) => {
         isLoading.value = true
         error.value = ''
 
         try {
-            const cartId = await getOrCreateCart()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('User not authenticated')
 
             // Check if item already exists in cart
             const { data: existingItem } = await supabase
-                .from('keranjang_item')
-                .select('id, quantity')
-                .eq('keranjang_id', cartId)
+                .from('keranjang')
+                .select('id, jumlah')
+                .eq('user_id', user.id)
                 .eq('produk_id', product.id)
                 .single()
 
             if (existingItem) {
                 // Update quantity
                 const { error: updateError } = await supabase
-                    .from('keranjang_item')
-                    .update({ quantity: existingItem.quantity + quantity })
+                    .from('keranjang')
+                    .update({ jumlah: existingItem.jumlah + quantity })
                     .eq('id', existingItem.id)
 
                 if (updateError) throw updateError
             } else {
                 // Add new item
                 const { error: insertError } = await supabase
-                    .from('keranjang_item')
+                    .from('keranjang')
                     .insert({
-                        keranjang_id: cartId,
+                        user_id: user.id,
                         produk_id: product.id,
-                        quantity
+                        jumlah: quantity
                     })
 
                 if (insertError) throw insertError
@@ -157,8 +143,8 @@ export const useCartStore = defineStore('cart', () => {
 
         try {
             const { error } = await supabase
-                .from('keranjang_item')
-                .update({ quantity })
+                .from('keranjang')
+                .update({ jumlah: quantity })
                 .eq('id', itemId)
 
             if (error) throw error
@@ -173,7 +159,7 @@ export const useCartStore = defineStore('cart', () => {
     const removeFromCart = async (itemId: number) => {
         try {
             const { error } = await supabase
-                .from('keranjang_item')
+                .from('keranjang')
                 .delete()
                 .eq('id', itemId)
 
@@ -192,14 +178,9 @@ export const useCartStore = defineStore('cart', () => {
             if (!user) return
 
             const { error } = await supabase
-                .from('keranjang_item')
+                .from('keranjang')
                 .delete()
-                .in('keranjang_id', [
-                    supabase
-                        .from('keranjang')
-                        .select('id')
-                        .eq('user_id', user.id)
-                ])
+                .eq('user_id', user.id)
 
             if (error) throw error
             cartItems.value = []

@@ -110,15 +110,22 @@
                                                 <span class="btn-quantity btn-increase" @click="increaseQuantity">+</span>
                                             </div>
                                         </div>
-                                        
-                                        <div class="tf-product-info-buy-button">
+                                          <div class="tf-product-info-buy-button">
+                                            <!-- Cart feedback message -->
+                                            <div v-if="cartMessage" class="cart-message mb-3 p-2 rounded" 
+                                                 :class="cartMessage.includes('✓') ? 'bg-success text-white' : 'bg-danger text-white'">
+                                                {{ cartMessage }}
+                                            </div>
+                                            
                                             <form class="">
                                                 <button type="button" 
-                                                        :disabled="!isInStock" 
+                                                        :disabled="!isInStock || isAddingToCart || cartStore.isLoading" 
                                                         @click="addToCart"
                                                         class="tf-btn btn-fill justify-content-center fw-6 fs-16 flex-grow-1 animate-hover-btn btn-add-to-cart">
-                                                    <span>{{ isInStock ? 'Add to cart' : 'Out of Stock' }} -&nbsp;</span>
-                                                    <span class="tf-qty-price total-price">{{ totalPrice }}</span>
+                                                    <span v-if="isAddingToCart">Adding...</span>
+                                                    <span v-else-if="!isInStock">Out of Stock</span>
+                                                    <span v-else>Add to cart -&nbsp;</span>
+                                                    <span v-if="!isAddingToCart" class="tf-qty-price total-price">{{ totalPrice }}</span>
                                                 </button>
                                                 <a href="javascript:void(0);" 
                                                    @click="addToWishlist"
@@ -231,16 +238,20 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '../../utils/supabase';
+import { useCartStore } from '../../stores/cartStore';
 import ProductTerms from './productTerms.vue';
 
 const route = useRoute();
 const router = useRouter();
+const cartStore = useCartStore();
 
 // Reactive data
 const product = ref<any>(null);
 const isLoading = ref(false);
 const errorMessage = ref('');
 const quantity = ref(1);
+const isAddingToCart = ref(false);
+const cartMessage = ref('');
 
 // Get product ID from route params
 const productId = computed(() => route.params.id);
@@ -330,10 +341,33 @@ const decreaseQuantity = () => {
 };
 
 // Product actions
-const addToCart = () => {
-    if (!product.value) return;
-    console.log('Add to cart:', product.value.nama_produk, 'Quantity:', quantity.value);
-    alert(`Added ${quantity.value} ${product.value.nama_produk} to cart (not implemented yet).`);
+const addToCart = async () => {
+    if (!product.value || isAddingToCart.value || !isInStock.value) return;
+    
+    isAddingToCart.value = true;
+    cartMessage.value = '';
+    
+    try {
+        const success = await cartStore.addToCart(product.value, quantity.value);
+        
+        if (success) {
+            cartMessage.value = `✓ Added ${quantity.value} ${product.value.nama_produk} to cart!`;
+            // Reset quantity after successful add
+            quantity.value = 1;
+            
+            // Clear success message after 3 seconds
+            setTimeout(() => {
+                cartMessage.value = '';
+            }, 3000);
+        } else {
+            cartMessage.value = 'Failed to add item to cart. Please try again.';
+        }
+    } catch (error) {
+        console.error('Error adding to cart:', error);
+        cartMessage.value = 'An error occurred. Please try again.';
+    } finally {
+        isAddingToCart.value = false;
+    }
 };
 
 const addToWishlist = () => {
@@ -408,5 +442,34 @@ onMounted(() => {
 .tf-product-info-category p {
     margin: 0;
     color: #666;
+}
+
+.cart-message {
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.text-white {
+    color: #fff !important;
 }
 </style>
