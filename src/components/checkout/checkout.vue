@@ -1,171 +1,378 @@
 <template>
-          <!-- page-cart -->
-        <section class="flat-spacing-11">
-            <div class="container">
-                <div class="tf-page-cart-wrap layout-2">
-                    <div class="tf-page-cart-item">
-                        <h5 class="fw-5 mb_20">Checkout</h5>
-                        <form class="form-checkout">
-                            <div class="box grid-2">
-                                <fieldset class="fieldset">
-                                    <label for="first-name">First Name</label>
-                                    <input type="text" id="first-name" placeholder="Themesflat">
-                                </fieldset>
-                                <fieldset class="fieldset">
-                                    <label for="last-name">Last Name</label>
-                                    <input type="text" id="last-name">
-                                </fieldset>
+    <!-- page-cart -->
+    <section class="flat-spacing-11">
+        <div class="container">
+            <div class="tf-page-cart-wrap layout-2">
+                <div class="tf-page-cart-item">
+                    <h5 class="fw-5 mb_20">Checkout</h5>
+                    <form class="form-checkout" @submit.prevent="placeOrder">
+                        <div class="box grid-2">
+                            <fieldset class="fieldset">
+                                <label for="first-name">First Name</label>
+                                <input type="text" id="first-name" placeholder="Enter first name" v-model="firstName" required>
+                            </fieldset>
+                            <fieldset class="fieldset">
+                                <label for="last-name">Last Name</label>
+                                <input type="text" id="last-name" placeholder="Enter last name" v-model="lastName" required>
+                            </fieldset>
+                        </div>
+                        <fieldset class="box fieldset">
+                            <label for="country">Country/Region</label>
+                            <input type="text" id="country" v-model="country" placeholder="e.g. Indonesia">
+                        </fieldset>
+                        <fieldset class="box fieldset">
+                            <label for="city">Town/City</label>
+                            <input type="text" id="city" v-model="city" placeholder="Enter town/city" required>
+                        </fieldset>
+                        <fieldset class="box fieldset">
+                            <label for="address">Address</label>
+                            <input type="text" id="address" v-model="streetAddress" placeholder="Enter street address, province, postal code" required>
+                        </fieldset>
+                        <fieldset class="box fieldset">
+                            <label for="postal-code">Postal Code</label>
+                            <input type="text" id="postal-code" v-model="postalCode" placeholder="Enter postal code" required>
+                        </fieldset>
+                        <fieldset class="box fieldset">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" v-model="phone" placeholder="Enter phone number" required>
+                        </fieldset>
+                        <fieldset class="box fieldset">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" v-model="email" placeholder="Enter email address" required>
+                        </fieldset>
+                        <fieldset class="box fieldset">
+                            <label for="note">Order notes (optional)</label>
+                            <textarea name="note" id="note" v-model="orderNote" placeholder="Notes about your order, e.g. special notes for delivery."></textarea>
+                        </fieldset>
+                        <div class="box grid-2">
+                            <fieldset class="fieldset">
+                                <label for="address-select">Select Address</label>
+                                <select id="address-select" v-model="selectedAddressId">
+                                    <option v-for="address in userAddresses" :key="address.id" :value="address.id">
+                                        {{ address.label || (address.nama_penerima + ', ' + address.alamat_lengkap) }}
+                                    </option>
+                                </select>
+                            </fieldset>
+                        </div>
+                    </form>
+                </div>
+                <div class="tf-page-cart-footer">
+                    <div class="tf-cart-footer-inner">
+                        <h5 class="fw-5 mb_20">Your order</h5>
+                        <div class="tf-page-cart-checkout widget-wrap-checkout">
+                            <ul class="wrap-checkout-product" v-if="cartItems.length > 0">
+                                <li v-for="item in cartItems" :key="item.id" class="checkout-product-item">
+                                    <figure class="img-product">
+                                        <img :src="getProductImage(item)" alt="product" @error="handleImageError">
+                                        <span class="quantity">{{ item.jumlah }}</span>
+                                    </figure>
+                                    <div class="content">
+                                        <div class="info">
+                                            <p class="name">{{ item.produk.nama_produk }}</p>
+                                            <!-- Variant info can be added here if available -->
+                                        </div>
+                                        <span class="price">{{ formatPrice(item.produk.harga * item.jumlah) }}</span>
+                                    </div>
+                                </li>
+                            </ul>
+                            <p v-else>Your cart is empty.</p>
+                            
+                            <div class="coupon-box">
+                                <!-- Coupon functionality can be added here -->
+                                <!-- <input type="text" placeholder="Discount code"> -->
+                                <!-- <a href="#" class="tf-btn btn-sm radius-3 btn-fill btn-icon animate-hover-btn">Apply</a> -->
                             </div>
-                            <fieldset class="box fieldset">
-                                <label for="country">Country/Region</label>
-                                <div class="select-custom">
-                                    <select class="tf-select w-100" id="country" name="address[country]" data-default="">
-                                        <option value="---" data-provinces="[]">---</option>
-                                        <option value="Australia" data-provinces="[['Australian Capital Territory','Australian Capital Territory'],['New South Wales','New South Wales'],['Northern Territory','Northern Territory'],['Queensland','Queensland'],['South Australia','South Australia'],['Tasmania','Tasmania'],['Victoria','Victoria'],['Western Australia','Western Australia']]">Australia</option>
-                                        <option value="Austria" data-provinces="[]">Austria</option>
-                                        <option value="Belgium" data-provinces="[]">Belgium</option>
-                                        <option value="Canada" data-provinces="[['Alberta','Alberta'],['British Columbia','British Columbia'],['Manitoba','Manitoba'],['New Brunswick','New Brunswick'],['Newfoundland and Labrador','Newfoundland and Labrador'],['Northwest Territories','Northwest Territories'],['Nova Scotia','Nova Scotia'],['Nunavut','Nunavut'],['Ontario','Ontario'],['Prince Edward Island','Prince Edward Island'],['Quebec','Quebec'],['Saskatchewan','Saskatchewan'],['Yukon','Yukon']]">Canada</option>
-                                        <option value="Czech Republic" data-provinces="[]">Czechia</option>
-                                        <option value="Denmark" data-provinces="[]">Denmark</option>
-                                        <option value="Finland" data-provinces="[]">Finland</option>
-                                        <option value="France" data-provinces="[]">France</option>
-                                        <option value="Germany" data-provinces="[]">Germany</option>
-                                        <option value="Hong Kong" data-provinces="[['Hong Kong Island','Hong Kong Island'],['Kowloon','Kowloon'],['New Territories','New Territories']]">Hong Kong SAR</option>
-                                        <option value="Ireland" data-provinces="[['Carlow','Carlow'],['Cavan','Cavan'],['Clare','Clare'],['Cork','Cork'],['Donegal','Donegal'],['Dublin','Dublin'],['Galway','Galway'],['Kerry','Kerry'],['Kildare','Kildare'],['Kilkenny','Kilkenny'],['Laois','Laois'],['Leitrim','Leitrim'],['Limerick','Limerick'],['Longford','Longford'],['Louth','Louth'],['Mayo','Mayo'],['Meath','Meath'],['Monaghan','Monaghan'],['Offaly','Offaly'],['Roscommon','Roscommon'],['Sligo','Sligo'],['Tipperary','Tipperary'],['Waterford','Waterford'],['Westmeath','Westmeath'],['Wexford','Wexford'],['Wicklow','Wicklow']]">Ireland</option>
-                                        <option value="Israel" data-provinces="[]">Israel</option>
-                                        <option value="Italy" data-provinces="[['Agrigento','Agrigento'],['Alessandria','Alessandria'],['Ancona','Ancona'],['Aosta','Aosta Valley'],['Arezzo','Arezzo'],['Ascoli Piceno','Ascoli Piceno'],['Asti','Asti'],['Avellino','Avellino'],['Bari','Bari'],['Barletta-Andria-Trani','Barletta-Andria-Trani'],['Belluno','Belluno'],['Benevento','Benevento'],['Bergamo','Bergamo'],['Biella','Biella'],['Bologna','Bologna'],['Bolzano','South Tyrol'],['Brescia','Brescia'],['Brindisi','Brindisi'],['Cagliari','Cagliari'],['Caltanissetta','Caltanissetta'],['Campobasso','Campobasso'],['Carbonia-Iglesias','Carbonia-Iglesias'],['Caserta','Caserta'],['Catania','Catania'],['Catanzaro','Catanzaro'],['Chieti','Chieti'],['Como','Como'],['Cosenza','Cosenza'],['Cremona','Cremona'],['Crotone','Crotone'],['Cuneo','Cuneo'],['Enna','Enna'],['Fermo','Fermo'],['Ferrara','Ferrara'],['Firenze','Florence'],['Foggia','Foggia'],['Forlì-Cesena','Forlì-Cesena'],['Frosinone','Frosinone'],['Genova','Genoa'],['Gorizia','Gorizia'],['Grosseto','Grosseto'],['Imperia','Imperia'],['Isernia','Isernia'],['L'Aquila','L’Aquila'],['La Spezia','La Spezia'],['Latina','Latina'],['Lecce','Lecce'],['Lecco','Lecco'],['Livorno','Livorno'],['Lodi','Lodi'],['Lucca','Lucca'],['Macerata','Macerata'],['Mantova','Mantua'],['Massa-Carrara','Massa and Carrara'],['Matera','Matera'],['Medio Campidano','Medio Campidano'],['Messina','Messina'],['Milano','Milan'],['Modena','Modena'],['Monza e Brianza','Monza and Brianza'],['Napoli','Naples'],['Novara','Novara'],['Nuoro','Nuoro'],['Ogliastra','Ogliastra'],['Olbia-Tempio','Olbia-Tempio'],['Oristano','Oristano'],['Padova','Padua'],['Palermo','Palermo'],['Parma','Parma'],['Pavia','Pavia'],['Perugia','Perugia'],['Pesaro e Urbino','Pesaro and Urbino'],['Pescara','Pescara'],['Piacenza','Piacenza'],['Pisa','Pisa'],['Pistoia','Pistoia'],['Pordenone','Pordenone'],['Potenza','Potenza'],['Prato','Prato'],['Ragusa','Ragusa'],['Ravenna','Ravenna'],['Reggio Calabria','Reggio Calabria'],['Reggio Emilia','Reggio Emilia'],['Rieti','Rieti'],['Rimini','Rimini'],['Roma','Rome'],['Rovigo','Rovigo'],['Salerno','Salerno'],['Sassari','Sassari'],['Savona','Savona'],['Siena','Siena'],['Siracusa','Syracuse'],['Sondrio','Sondrio'],['Taranto','Taranto'],['Teramo','Teramo'],['Terni','Terni'],['Torino','Turin'],['Trapani','Trapani'],['Trento','Trentino'],['Treviso','Treviso'],['Trieste','Trieste'],['Udine','Udine'],['Varese','Varese'],['Venezia','Venice'],['Verbano-Cusio-Ossola','Verbano-Cusio-Ossola'],['Vercelli','Vercelli'],['Verona','Verona'],['Vibo Valentia','Vibo Valentia'],['Vicenza','Vicenza'],['Viterbo','Viterbo']]">Italy</option>
-                                        <option value="Japan" data-provinces="[['Aichi','Aichi'],['Akita','Akita'],['Aomori','Aomori'],['Chiba','Chiba'],['Ehime','Ehime'],['Fukui','Fukui'],['Fukuoka','Fukuoka'],['Fukushima','Fukushima'],['Gifu','Gifu'],['Gunma','Gunma'],['Hiroshima','Hiroshima'],['Hokkaidō','Hokkaido'],['Hyōgo','Hyogo'],['Ibaraki','Ibaraki'],['Ishikawa','Ishikawa'],['Iwate','Iwate'],['Kagawa','Kagawa'],['Kagoshima','Kagoshima'],['Kanagawa','Kanagawa'],['Kumamoto','Kumamoto'],['Kyōto','Kyoto'],['Kōchi','Kochi'],['Mie','Mie'],['Miyagi','Miyagi'],['Miyazaki','Miyazaki'],['Nagano','Nagano'],['Nagasaki','Nagasaki'],['Nara','Nara'],['Niigata','Niigata'],['Okayama','Okayama'],['Okinawa','Okinawa'],['Saga','Saga'],['Saitama','Saitama'],['Shiga','Shiga'],['Shimane','Shimane'],['Shizuoka','Shizuoka'],['Tochigi','Tochigi'],['Tokushima','Tokushima'],['Tottori','Tottori'],['Toyama','Toyama'],['Tōkyō','Tokyo'],['Wakayama','Wakayama'],['Yamagata','Yamagata'],['Yamaguchi','Yamaguchi'],['Yamanashi','Yamanashi'],['Ōita','Oita'],['Ōsaka','Osaka']]">Japan</option>
-                                        <option value="Malaysia" data-provinces="[['Johor','Johor'],['Kedah','Kedah'],['Kelantan','Kelantan'],['Kuala Lumpur','Kuala Lumpur'],['Labuan','Labuan'],['Melaka','Malacca'],['Negeri Sembilan','Negeri Sembilan'],['Pahang','Pahang'],['Penang','Penang'],['Perak','Perak'],['Perlis','Perlis'],['Putrajaya','Putrajaya'],['Sabah','Sabah'],['Sarawak','Sarawak'],['Selangor','Selangor'],['Terengganu','Terengganu']]">Malaysia</option>
-                                        <option value="Netherlands" data-provinces="[]">Netherlands</option>
-                                        <option value="New Zealand" data-provinces="[['Auckland','Auckland'],['Bay of Plenty','Bay of Plenty'],['Canterbury','Canterbury'],['Chatham Islands','Chatham Islands'],['Gisborne','Gisborne'],['Hawke's Bay','Hawke’s Bay'],['Manawatu-Wanganui','Manawatū-Whanganui'],['Marlborough','Marlborough'],['Nelson','Nelson'],['Northland','Northland'],['Otago','Otago'],['Southland','Southland'],['Taranaki','Taranaki'],['Tasman','Tasman'],['Waikato','Waikato'],['Wellington','Wellington'],['West Coast','West Coast']]">New Zealand</option>
-                                        <option value="Norway" data-provinces="[]">Norway</option>
-                                        <option value="Poland" data-provinces="[]">Poland</option>
-                                        <option value="Portugal" data-provinces="[['Aveiro','Aveiro'],['Açores','Azores'],['Beja','Beja'],['Braga','Braga'],['Bragança','Bragança'],['Castelo Branco','Castelo Branco'],['Coimbra','Coimbra'],['Faro','Faro'],['Guarda','Guarda'],['Leiria','Leiria'],['Lisboa','Lisbon'],['Madeira','Madeira'],['Portalegre','Portalegre'],['Porto','Porto'],['Santarém','Santarém'],['Setúbal','Setúbal'],['Viana do Castelo','Viana do Castelo'],['Vila Real','Vila Real'],['Viseu','Viseu'],['Évora','Évora']]">Portugal</option>
-                                        <option value="Singapore" data-provinces="[]">Singapore</option>
-                                        <option value="South Korea" data-provinces="[['Busan','Busan'],['Chungbuk','North Chungcheong'],['Chungnam','South Chungcheong'],['Daegu','Daegu'],['Daejeon','Daejeon'],['Gangwon','Gangwon'],['Gwangju','Gwangju City'],['Gyeongbuk','North Gyeongsang'],['Gyeonggi','Gyeonggi'],['Gyeongnam','South Gyeongsang'],['Incheon','Incheon'],['Jeju','Jeju'],['Jeonbuk','North Jeolla'],['Jeonnam','South Jeolla'],['Sejong','Sejong'],['Seoul','Seoul'],['Ulsan','Ulsan']]">South Korea</option>
-                                        <option value="Spain" data-provinces="[['A Coruña','A Coruña'],['Albacete','Albacete'],['Alicante','Alicante'],['Almería','Almería'],['Asturias','Asturias Province'],['Badajoz','Badajoz'],['Balears','Balears Province'],['Barcelona','Barcelona'],['Burgos','Burgos'],['Cantabria','Cantabria Province'],['Castellón','Castellón'],['Ceuta','Ceuta'],['Ciudad Real','Ciudad Real'],['Cuenca','Cuenca'],['Cáceres','Cáceres'],['Cádiz','Cádiz'],['Córdoba','Córdoba'],['Girona','Girona'],['Granada','Granada'],['Guadalajara','Guadalajara'],['Guipúzcoa','Gipuzkoa'],['Huelva','Huelva'],['Huesca','Huesca'],['Jaén','Jaén'],['La Rioja','La Rioja Province'],['Las Palmas','Las Palmas'],['León','León'],['Lleida','Lleida'],['Lugo','Lugo'],['Madrid','Madrid Province'],['Melilla','Melilla'],['Murcia','Murcia'],['Málaga','Málaga'],['Navarra','Navarra'],['Ourense','Ourense'],['Palencia','Palencia'],['Pontevedra','Pontevedra'],['Salamanca','Salamanca'],['Santa Cruz de Tenerife','Santa Cruz de Tenerife'],['Segovia','Segovia'],['Sevilla','Seville'],['Soria','Soria'],['Tarragona','Tarragona'],['Teruel','Teruel'],['Toledo','Toledo'],['Valencia','Valencia'],['Valladolid','Valladolid'],['Vizcaya','Biscay'],['Zamora','Zamora'],['Zaragoza','Zaragoza'],['Álava','Álava'],['Ávila','Ávila']]">Spain</option>
-                                        <option value="Sweden" data-provinces="[]">Sweden</option>
-                                        <option value="Switzerland" data-provinces="[]">Switzerland</option>
-                                        <option value="United Arab Emirates" data-provinces="[['Abu Dhabi','Abu Dhabi'],['Ajman','Ajman'],['Dubai','Dubai'],['Fujairah','Fujairah'],['Ras al-Khaimah','Ras al-Khaimah'],['Sharjah','Sharjah'],['Umm al-Quwain','Umm al-Quwain']]">United Arab Emirates</option>
-                                        <option value="United Kingdom" data-provinces="[['British Forces','British Forces'],['England','England'],['Northern Ireland','Northern Ireland'],['Scotland','Scotland'],['Wales','Wales']]">United Kingdom</option>
-                                        <option value="United States" data-provinces="[['Alabama','Alabama'],['Alaska','Alaska'],['American Samoa','American Samoa'],['Arizona','Arizona'],['Arkansas','Arkansas'],['Armed Forces Americas','Armed Forces Americas'],['Armed Forces Europe','Armed Forces Europe'],['Armed Forces Pacific','Armed Forces Pacific'],['California','California'],['Colorado','Colorado'],['Connecticut','Connecticut'],['Delaware','Delaware'],['District of Columbia','Washington DC'],['Federated States of Micronesia','Micronesia'],['Florida','Florida'],['Georgia','Georgia'],['Guam','Guam'],['Hawaii','Hawaii'],['Idaho','Idaho'],['Illinois','Illinois'],['Indiana','Indiana'],['Iowa','Iowa'],['Kansas','Kansas'],['Kentucky','Kentucky'],['Louisiana','Louisiana'],['Maine','Maine'],['Marshall Islands','Marshall Islands'],['Maryland','Maryland'],['Massachusetts','Massachusetts'],['Michigan','Michigan'],['Minnesota','Minnesota'],['Mississippi','Mississippi'],['Missouri','Missouri'],['Montana','Montana'],['Nebraska','Nebraska'],['Nevada','Nevada'],['New Hampshire','New Hampshire'],['New Jersey','New Jersey'],['New Mexico','New Mexico'],['New York','New York'],['North Carolina','North Carolina'],['North Dakota','North Dakota'],['Northern Mariana Islands','Northern Mariana Islands'],['Ohio','Ohio'],['Oklahoma','Oklahoma'],['Oregon','Oregon'],['Palau','Palau'],['Pennsylvania','Pennsylvania'],['Puerto Rico','Puerto Rico'],['Rhode Island','Rhode Island'],['South Carolina','South Carolina'],['South Dakota','South Dakota'],['Tennessee','Tennessee'],['Texas','Texas'],['Utah','Utah'],['Vermont','Vermont'],['Virgin Islands','U.S. Virgin Islands'],['Virginia','Virginia'],['Washington','Washington'],['West Virginia','West Virginia'],['Wisconsin','Wisconsin'],['Wyoming','Wyoming']]">United States</option>
-                                        <option value="Vietnam" data-provinces="[]">Vietnam</option>
-                                    </select>
+                            <div class="d-flex justify-content-between line pb_20">
+                                <h6 class="fw-5">Total</h6>
+                                <h6 class="total fw-5">{{ formatPrice(totalPrice) }}</h6>
+                            </div>
+                            <div class="wd-check-payment">
+                                <div class="fieldset-radio mb_20">
+                                    <input type="radio" name="payment" id="bank" class="tf-check" v-model="selectedPaymentMethod" value="bank" checked>
+                                    <label for="bank">Direct bank transfer</label>
                                 </div>
-                            </fieldset>
-                            <fieldset class="box fieldset">
-                                <label for="city">Town/City</label>
-                                <input type="text" id="city">
-                            </fieldset>
-                            <fieldset class="box fieldset">
-                                <label for="address">Address</label>
-                                <input type="text" id="address">
-                            </fieldset>
-                            <fieldset class="box fieldset">
-                                <label for="phone">Phone Number</label>
-                                <input type="number" id="phone">
-                            </fieldset>
-                            <fieldset class="box fieldset">
-                                <label for="email">Email</label>
-                                <input type="email" id="email">
-                            </fieldset>
-                            <fieldset class="box fieldset">
-                                <label for="note">Order notes (optional)</label>
-                                <textarea name="note" id="note"></textarea>
-                            </fieldset>
-                        </form>
-                    </div>
-                    <div class="tf-page-cart-footer">
-                        <div class="tf-cart-footer-inner">
-                            <h5 class="fw-5 mb_20">Your order</h5>
-                            <form class="tf-page-cart-checkout widget-wrap-checkout">
-                                <ul class="wrap-checkout-product">
-                                    <li class="checkout-product-item">
-                                        <figure class="img-product">
-                                            <img src="/user/images/products/brown.jpg" alt="product">
-                                            <span class="quantity">1</span>
-                                        </figure>
-                                        <div class="content">
-                                            <div class="info">
-                                                <p class="name">Ribbed modal T-shirt</p>
-                                                <span class="variant">Brown / M</span>
-                                            </div>
-                                            <span class="price">$25.00</span>
-                                        </div>
-                                    </li>
-                                    <li class="checkout-product-item">
-                                        <figure class="img-product">
-                                            <img src="/user/images/products/kid-12.jpg" alt="product">
-                                            <span class="quantity">1</span>
-                                        </figure>
-                                        <div class="content">
-                                            <div class="info">
-                                                <p class="name">Vanilla White</p>
-                                            </div>
-                                            <span class="price">$35.00</span>
-                                        </div>
-                                    </li>
-                                    <li class="checkout-product-item">
-                                        <figure class="img-product">
-                                            <img src="/user/images/products/beige-2.jpg" alt="product">
-                                            <span class="quantity">1</span>
-                                        </figure>
-                                        <div class="content">
-                                            <div class="info">
-                                                <p class="name">Cotton jersey top</p>
-                                                <span class="variant">Beige / S</span>
-                                            </div>
-                                            <span class="price">$8.00</span>
-                                        </div>
-                                    </li>
-                                    <li class="checkout-product-item">
-                                        <figure class="img-product">
-                                            <img src="/user/images/products/orange-1.jpg" alt="product">
-                                            <span class="quantity">3</span>
-                                        </figure>
-                                        <div class="content">
-                                            <div class="info">
-                                                <p class="name">Ribbed Tank Top</p>
-                                                <span class="variant">Orange / S</span>
-                                            </div>
-                                            <span class="price">$54.00</span>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <div class="coupon-box">
-                                    <input type="text" placeholder="Discount code">
-                                    <a href="checkout.html#" class="tf-btn btn-sm radius-3 btn-fill btn-icon animate-hover-btn">Apply</a>
+                                <div class="fieldset-radio mb_20">
+                                    <input type="radio" name="payment" id="delivery" class="tf-check" v-model="selectedPaymentMethod" value="cod">
+                                    <label for="delivery">Cash on delivery</label>
                                 </div>
-                                <div class="d-flex justify-content-between line pb_20">
-                                    <h6 class="fw-5">Total</h6>
-                                    <h6 class="total fw-5">$122.00</h6>
-                                </div>
-                                <div class="wd-check-payment">
-                                    <div class="fieldset-radio mb_20">
-                                        <input type="radio" name="payment" id="bank" class="tf-check" checked>
-                                        <label for="bank">Direct bank transfer</label>
-                                       
-                                    </div>
-                                    <div class="fieldset-radio mb_20">
-                                        <input type="radio" name="payment" id="delivery" class="tf-check">
-                                        <label for="delivery">Cash on delivery</label>
-                                    </div>
-                                    <p class="text_black-2 mb_20">Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="privacy-policy.html" class="text-decoration-underline">privacy policy</a>.</p>
-                                    <div class="box-checkbox fieldset-radio mb_20">
-                                        <input type="checkbox" id="check-agree" class="tf-check">
-                                        <label for="check-agree" class="text_black-2">I have read and agree to the website <a href="terms-conditions.html" class="text-decoration-underline">terms and conditions</a>.</label>
-                                    </div>
-                                </div>
-                                <button class="tf-btn radius-3 btn-fill btn-icon animate-hover-btn justify-content-center">Place order</button>
-                            </form>
+                                <!-- Add other payment methods as needed -->
+                            </div>
+                            <button type="submit" @click="placeOrder" class="tf-btn radius-3 btn-fill btn-icon animate-hover-btn justify-content-center" :disabled="cartItems.length === 0">Place order</button>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
-        <!-- page-cart -->
-
-
-
-
+        </div>
+    </section>
+    <!-- page-cart -->
 </template>
+
+<script setup lang="ts">
+import { ref, onMounted, computed, watch } from 'vue'
+import { useAuthStore } from '@/stores/authStore'
+import { useCartStore } from '@/stores/cartStore'
+import { supabase } from '@/utils/supabase'
+
+// Interface for Address
+interface Alamat {
+    id?: number
+    user_id?: string
+    label: string
+    nama_penerima: string
+    no_telp_penerima: string
+    alamat_lengkap: string
+    kota: string
+    provinsi: string
+    kode_pos: string
+    is_utama: boolean
+    created_at?: string
+}
+
+const authStore = useAuthStore()
+const cartStore = useCartStore()
+
+// Form data
+const firstName = ref('')
+const lastName = ref('')
+const country = ref('Indonesia') // Default country
+const city = ref('')
+const streetAddress = ref('')
+const phone = ref('')
+const email = ref('')
+const postalCode = ref('') // Added postalCode
+const orderNote = ref('')
+
+// Address data
+const userAddresses = ref<Alamat[]>([])
+const defaultAddress = ref<Alamat | null>(null) // Keep for reference
+const isLoadingAddress = ref(false)
+const addressError = ref<string | null>(null)
+const selectedAddressId = ref<number | null>(null); // To store the ID of the selected address, or null for manual/new
+
+// Payment method
+const selectedPaymentMethod = ref('bank'); // Default payment method
+
+// Cart data (computed)
+const cartItems = computed(() => cartStore.cartItems)
+const totalPrice = computed(() => cartStore.totalPrice)
+
+// Update form fields with selected address
+const updateFormWithAddress = (address: Alamat) => {
+    const nameParts = (address.nama_penerima || '').split(' ');
+    firstName.value = nameParts[0] || '';
+    lastName.value = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    
+    phone.value = address.no_telp_penerima || '';
+    streetAddress.value = address.alamat_lengkap || '';
+    city.value = address.kota || '';
+    postalCode.value = address.kode_pos || '';
+    // country.value typically remains 'Indonesia'
+    // email.value is user's account email
+};
+
+// Fetch addresses function
+const fetchAddresses = async () => {
+    if (!authStore.user) {
+        addressError.value = 'User not logged in.'
+        return
+    }
+    isLoadingAddress.value = true
+    addressError.value = null
+    try {
+        const { data, error } = await supabase
+            .from('alamat_pengguna') // Corrected table name
+            .select('*')
+            .eq('user_id', authStore.user.id)
+            .order('is_utama', { ascending: false })
+            .order('created_at', { ascending: false });
+
+        if (error) throw error
+        
+        userAddresses.value = data || []
+        const foundDefaultAddress = userAddresses.value.find(addr => addr.is_utama) || userAddresses.value[0] || null;
+
+        if (foundDefaultAddress) {
+            defaultAddress.value = foundDefaultAddress;
+            if (selectedAddressId.value === null || selectedAddressId.value === foundDefaultAddress.id) { // Auto-select default if nothing is selected or if it's the current default
+                updateFormWithAddress(foundDefaultAddress);
+                selectedAddressId.value = foundDefaultAddress.id ?? null;
+            }
+        } else {
+            // No addresses found, or no default.
+            if (selectedAddressId.value !== null) {
+                 selectedAddressId.value = null; // Trigger watcher to reset form for manual entry
+            } else {
+                // If already null, ensure address fields are clear (profile names handled by their watcher)
+                phone.value = '';
+                streetAddress.value = '';
+                city.value = '';
+                postalCode.value = '';
+            }
+        }
+    } catch (err: any) {
+        console.error('Error fetching addresses:', err)
+        addressError.value = err.message || 'Failed to fetch addresses.'
+    } finally {
+        isLoadingAddress.value = false
+    }
+}
+
+// Watchers to populate form data
+watch(() => authStore.userProfile, (profile) => {
+    // Only set from profile if no address is currently selected driving these fields
+    if (profile && selectedAddressId.value === null) {
+        firstName.value = profile.first_name || ''
+        lastName.value = profile.last_name || ''
+    }
+}, { immediate: true, deep: true })
+
+watch(() => authStore.user, (currentUser, prevUser) => {
+    if (currentUser) {
+        email.value = currentUser.email || ''
+        // Fetch addresses if user changes or logs in
+        if (currentUser.id !== prevUser?.id) {
+            fetchAddresses() 
+        }
+    } else {
+        // Clear form and address list if user logs out
+        firstName.value = ''
+        lastName.value = ''
+        email.value = ''
+        city.value = ''
+        streetAddress.value = ''
+        phone.value = ''
+        postalCode.value = ''
+        userAddresses.value = []
+        defaultAddress.value = null
+        selectedAddressId.value = null;
+    }
+}, { immediate: true, deep: true })
+
+watch(selectedAddressId, (newId) => {
+    if (newId && typeof newId === 'number') {
+        const selectedAddr = userAddresses.value.find(addr => addr.id === newId);
+        if (selectedAddr) {
+            updateFormWithAddress(selectedAddr);
+        }
+    } else if (newId === null) { 
+        // Manual entry mode: Reset to profile names, clear address specifics
+        if (authStore.userProfile) {
+            firstName.value = authStore.userProfile.first_name || '';
+            lastName.value = authStore.userProfile.last_name || '';
+        } else {
+            firstName.value = '';
+            lastName.value = '';
+        }
+        phone.value = ''; 
+        streetAddress.value = '';
+        city.value = '';
+        postalCode.value = '';
+        // email is already populated from authStore.user
+    }
+});
+
+onMounted(async () => {
+    if (!authStore.isLoggedIn && !authStore.loading) {
+      await authStore.initialize(); // This will trigger user watcher, which calls fetchAddresses
+    } else if (authStore.isLoggedIn) {
+      await fetchAddresses(); // Explicitly fetch if already logged in and watchers might not cover initial state
+    }
+    await cartStore.fetchCartItems();
+})
+
+// Utility: Format price
+const formatPrice = (price: number) => {
+    if (price === null || price === undefined) return 'IDR 0'
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0
+    }).format(price);
+}
+
+// Utility: Get product image
+const getProductImage = (item: any) => {
+    if (item.produk && item.produk.image_urls && item.produk.image_urls.length > 0) {
+        return item.produk.image_urls[0];
+    }
+    return '/user/images/products/placeholder.jpg';
+}
+
+const handleImageError = (event: Event) => {
+    (event.target as HTMLImageElement).src = '/user/images/products/placeholder.jpg';
+}
+
+// Place order function
+const placeOrder = async () => {
+    if (!firstName.value || !lastName.value || !streetAddress.value || !city.value || !postalCode.value || !phone.value || !email.value) {
+        alert('Please fill in all required billing and shipping fields.')
+        return
+    }
+    if (cartItems.value.length === 0) {
+        alert('Your cart is empty. Please add items to your cart before placing an order.')
+        return
+    }
+
+    const orderDetails = {
+        userId: authStore.user?.id,
+        customerInfo: {
+            firstName: firstName.value,
+            lastName: lastName.value,
+            phone: phone.value,
+            email: email.value,
+        },
+        shippingAddress: {
+            recipientName: `${firstName.value} ${lastName.value}`,
+            phone: phone.value,
+            address: streetAddress.value,
+            city: city.value,
+            country: country.value,
+            postalCode: postalCode.value, // Added postalCode
+        },
+        items: cartItems.value.map(item => ({
+            productId: item.produk.id,
+            productName: item.produk.nama_produk,
+            quantity: item.jumlah,
+            price: item.produk.harga,
+            subtotal: item.produk.harga * item.jumlah
+        })),
+        totalAmount: totalPrice.value,
+        paymentMethod: selectedPaymentMethod.value,
+        orderNote: orderNote.value,
+        orderDate: new Date().toISOString(),
+        status: 'Pending' // Initial order status
+    }
+
+    console.log('Placing order with details:', orderDetails)
+    
+    // TODO: Implement actual order submission to backend (e.g., Supabase)
+    // try {
+    //   const { data, error } = await supabase.from('orders').insert([orderDetails]).select();
+    //   if (error) throw error;
+    //   alert('Order placed successfully! Order ID: ' + data[0].id);
+    //   cartStore.clearCart(); 
+    //   // router.push({ name: 'OrderConfirmation', params: { orderId: data[0].id } });
+    // } catch (err: any) {
+    //   console.error('Error placing order:', err);
+    //   alert(`Failed to place order: ${err.message}`);
+    // }
+    alert('Order placement simulated. Check console for details. Actual submission to backend is pending implementation.');
+}
+</script>
+
+<style scoped>
+/* Add any specific styles for this component if needed */
+.form-checkout .fieldset input,
+.form-checkout .fieldset textarea,
+.form-checkout .fieldset select { /* Added select for styling */
+    width: 100%;
+    /* Ensure inputs take full width of their container */
+}
+.tf-field-input { /* Basic styling for select consistency */
+    border: 1px solid #e5e5e5;
+    padding: 10px 15px;
+    border-radius: 3px;
+    background-color: var(--white); /* Or your theme's input background */
+    color: var(--text-color); /* Or your theme's text color */
+}
+</style>
