@@ -1,10 +1,11 @@
 <template>
+    <!-- page-cart -->
     <section class="flat-spacing-11">
         <div class="container">
             <div class="tf-page-cart-wrap layout-2">
                 <div class="tf-page-cart-item">
                     <h5 class="fw-5 mb_20">Checkout</h5>
-                    <form class="form-checkout">
+                    <form class="form-checkout" @submit.prevent="placeOrder">
                         <div class="box grid-2">
                             <fieldset class="fieldset">
                                 <label for="first-name">First Name</label>
@@ -21,7 +22,7 @@
                         </fieldset>
                         <fieldset class="box fieldset">
                             <label for="streetAddress">Address</label>
-                            <input type="text" id="streetAddress" placeholder="Enter street address" v-model="streetAddress" required>
+                            <input type="text" id="streetAddress" v-model="streetAddress" placeholder="Enter street address" required>
                         </fieldset>
                         <div class="box grid-2">
                             <fieldset class="fieldset">
@@ -42,6 +43,7 @@
                             <input type="email" id="email" v-model="email" placeholder="Enter email address" required>
                         </fieldset>
                         
+                        <!-- Address Selection -->
                         <fieldset class="box fieldset mt_20">
                             <label class="mb_10">Bukan alamat yang diinginkan? Pilih dari bawah atau pilih alamat baru.</label>
                             <div v-if="isLoadingAddress" class="text-center">
@@ -89,6 +91,7 @@
                                     <div class="content">
                                         <div class="info">
                                             <p class="name">{{ item.produk.nama_produk }}</p>
+                                            <!-- Variant info can be added here if available -->
                                         </div>
                                         <span class="price">{{ formatPrice(item.produk.harga * item.jumlah) }}</span>
                                     </div>
@@ -96,30 +99,44 @@
                             </ul>
                             <p v-else>Your cart is empty.</p>
                             
+                            <div class="coupon-box">
+                                <!-- Coupon functionality can be added here -->
+                                <!-- <input type="text" placeholder="Discount code"> -->
+                                <!-- <a href="#" class="tf-btn btn-sm radius-3 btn-fill btn-icon animate-hover-btn">Apply</a> -->
+                            </div>
                             <div class="d-flex justify-content-between line pb_20">
                                 <h6 class="fw-5">Total</h6>
                                 <h6 class="total fw-5">{{ formatPrice(totalPrice) }}</h6>
                             </div>
-
-                            <button @click="placeOrder" class="tf-btn radius-3 btn-fill btn-icon animate-hover-btn justify-content-center" :disabled="cartItems.length === 0 || isPlacingOrder">
-                                <span v-if="isPlacingOrder">Memproses...</span>
-                                <span v-else>Place order & Pay</span>
-                            </button>
+                            <div class="wd-check-payment">
+                                <div class="fieldset-radio mb_20">
+                                    <input type="radio" name="payment" id="bank" class="tf-check" v-model="selectedPaymentMethod" value="bank" checked>
+                                    <label for="bank">Direct bank transfer</label>
+                                </div>
+                                <div class="fieldset-radio mb_20">
+                                    <input type="radio" name="payment" id="delivery" class="tf-check" v-model="selectedPaymentMethod" value="cod">
+                                    <label for="delivery">Cash on delivery</label>
+                                </div>
+                                <!-- Add other payment methods as needed -->
+                            </div>
+                            <button type="submit" @click="placeOrder" class="tf-btn radius-3 btn-fill btn-icon animate-hover-btn justify-content-center" :disabled="cartItems.length === 0">Place order</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
-    </template>
+    <!-- page-cart -->
+</template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter } from 'vue-router' // Added useRouter
 import { useAuthStore } from '@/stores/authStore'
 import { useCartStore } from '@/stores/cartStore'
 import { supabase } from '@/utils/supabase'
 
+// Interface for Address
 interface Alamat {
     id?: number
     user_id?: string
@@ -128,7 +145,7 @@ interface Alamat {
     no_telp_penerima: string
     alamat_lengkap: string
     kota: string
-    provinsi: string
+    provinsi: string // Added to match alamat.vue
     kode_pos: string
     is_utama: boolean
     created_at?: string
@@ -136,13 +153,12 @@ interface Alamat {
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
-const router = useRouter()
+const router = useRouter() // Initialize router
 
-const isPlacingOrder = ref(false);
-
+// Form data
 const firstName = ref('')
 const lastName = ref('')
-const country = ref('Indonesia')
+const country = ref('Indonesia') // Default country
 const city = ref('')
 const streetAddress = ref('')
 const phone = ref('')
@@ -150,25 +166,36 @@ const email = ref('')
 const postalCode = ref('')
 const orderNote = ref('')
 
+// Address data
 const userAddresses = ref<Alamat[]>([])
 const defaultAddress = ref<Alamat | null>(null)
 const isLoadingAddress = ref(false)
 const addressError = ref<string | null>(null)
 const selectedAddressId = ref<number | null>(null);
 
+// Payment method
+const selectedPaymentMethod = ref('bank'); // Default payment method
+
+// Cart data (computed)
 const cartItems = computed(() => cartStore.cartItems)
 const totalPrice = computed(() => cartStore.totalPrice)
 
+// Update form fields with selected address
 const updateFormWithAddress = (address: Alamat | null) => {
     if (address) {
         const nameParts = (address.nama_penerima || '').split(' ');
         firstName.value = nameParts[0] || '';
         lastName.value = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        
         phone.value = address.no_telp_penerima || '';
         streetAddress.value = address.alamat_lengkap || '';
         city.value = address.kota || '';
         postalCode.value = address.kode_pos || '';
+        // country.value remains 'Indonesia'
+        // email.value is user's account email, should not be overwritten by address
     } else {
+        // Clear address-specific fields if no address is selected (manual entry)
+        // Keep profile names if available, otherwise clear
         if (authStore.userProfile) {
             firstName.value = authStore.userProfile.first_name || '';
             lastName.value = authStore.userProfile.last_name || '';
@@ -176,7 +203,7 @@ const updateFormWithAddress = (address: Alamat | null) => {
             firstName.value = '';
             lastName.value = '';
         }
-        phone.value = '';
+        phone.value = ''; 
         streetAddress.value = '';
         city.value = '';
         postalCode.value = '';
@@ -192,6 +219,7 @@ const navigateToAddNewAddress = () => {
     router.push({ path: '/akun-saya', query: { tab: 'address' } });
 };
 
+// Fetch addresses function
 const fetchAddresses = async () => {
     if (!authStore.user) {
         addressError.value = 'User not logged in.'
@@ -213,24 +241,28 @@ const fetchAddresses = async () => {
         const foundDefaultAddress = userAddresses.value.find(addr => addr.is_utama) || userAddresses.value[0] || null;
 
         if (foundDefaultAddress) {
-            defaultAddress.value = foundDefaultAddress;
+            defaultAddress.value = foundDefaultAddress; // Keep for reference
+            // Auto-select the default address initially
             if (selectedAddressId.value === null) {
                 selectAddress(foundDefaultAddress);
             }
         } else {
+            // No addresses found, clear form for manual entry
             updateFormWithAddress(null);
         }
     } catch (err: any) {
         console.error('Error fetching addresses:', err)
         addressError.value = err.message || 'Failed to fetch addresses.'
-        userAddresses.value = [];
-        updateFormWithAddress(null);
+        userAddresses.value = []; // Clear addresses on error
+        updateFormWithAddress(null); // Reset form
     } finally {
         isLoadingAddress.value = false
     }
 }
 
+// Watchers to populate form data
 watch(() => authStore.userProfile, (profile) => {
+    // Only set from profile if no address is currently selected
     if (profile && selectedAddressId.value === null) {
         firstName.value = profile.first_name || ''
         lastName.value = profile.last_name || ''
@@ -240,29 +272,32 @@ watch(() => authStore.userProfile, (profile) => {
 watch(() => authStore.user, (currentUser, prevUser) => {
     if (currentUser) {
         email.value = currentUser.email || ''
-        if (currentUser.id !== prevUser?.id || userAddresses.value.length === 0) {
-            fetchAddresses()
+        if (currentUser.id !== prevUser?.id || userAddresses.value.length === 0) { // Fetch if user changes or addresses not loaded
+            fetchAddresses() 
         }
     } else {
+        // Clear form and address list if user logs out
         firstName.value = ''
         lastName.value = ''
         email.value = ''
-        updateFormWithAddress(null);
+        updateFormWithAddress(null); // Clear address fields
         userAddresses.value = []
         defaultAddress.value = null
         selectedAddressId.value = null;
     }
 }, { immediate: true, deep: true })
 
+
 onMounted(async () => {
     if (!authStore.isLoggedIn && !authStore.loading) {
-      await authStore.initialize();
-    } else if (authStore.isLoggedIn && userAddresses.value.length === 0) {
-      await fetchAddresses();
+      await authStore.initialize(); 
+    } else if (authStore.isLoggedIn && userAddresses.value.length === 0) { // Fetch if logged in but addresses not loaded
+      await fetchAddresses(); 
     }
     await cartStore.fetchCartItems();
 })
 
+// Utility: Format price
 const formatPrice = (price: number) => {
     if (price === null || price === undefined) return 'IDR 0'
     return new Intl.NumberFormat('id-ID', {
@@ -272,6 +307,7 @@ const formatPrice = (price: number) => {
     }).format(price);
 }
 
+// Utility: Get product image
 const getProductImage = (item: any) => {
     if (item.produk && item.produk.image_urls && item.produk.image_urls.length > 0) {
         return item.produk.image_urls[0];
@@ -283,88 +319,79 @@ const handleImageError = (event: Event) => {
     (event.target as HTMLImageElement).src = '/user/images/products/placeholder.jpg';
 }
 
+// Place order function
 const placeOrder = async () => {
-    if (!selectedAddressId.value) {
-        alert('Silakan pilih alamat pengiriman terlebih dahulu.');
-        return;
+    if (!firstName.value || !lastName.value || !streetAddress.value || !city.value || !postalCode.value || !phone.value || !email.value) {
+        alert('Please fill in all required billing and shipping fields.')
+        return
     }
     if (cartItems.value.length === 0) {
-        alert('Keranjang Anda kosong.');
-        return;
+        alert('Your cart is empty. Please add items to your cart before placing an order.')
+        return
     }
 
-    isPlacingOrder.value = true;
-
-    const requestBody = {
-      cart_items: cartItems.value.map(item => ({
-        produk_id: item.produk.id,
-        jumlah: item.jumlah,
-      })),
-      address_id: selectedAddressId.value
-    };
-
-    try {
-        const { data, error } = await supabase.functions.invoke('create-transaction', {
-            body: requestBody
-        });
-
-        if (error) throw new Error(error.message);
-
-        const token = data.token;
-        window.snap.pay(token, {
-            onSuccess: function(result){
-                console.log('success', result);
-                alert('Pembayaran sukses!');
-                cartStore.clearCart();
-                router.push({ path: '/akun-saya', query: { tab: 'orders' } });
-            },
-            onPending: function(result){
-                console.log('pending', result);
-                alert('Pembayaran Anda sedang diproses. Silakan selesaikan pembayaran.');
-                router.push({ path: '/akun-saya', query: { tab: 'orders' } });
-            },
-            onError: function(result){
-                console.log('error', result);
-                alert('Pembayaran Gagal!');
-                isPlacingOrder.value = false;
-            },
-            onClose: function(){
-                console.log('Popup ditutup tanpa menyelesaikan pembayaran');
-                isPlacingOrder.value = false;
-            }
-        });
-    } catch (err: any) {
-        console.error('Error saat memproses pesanan:', err);
-        alert(`Terjadi kesalahan: ${err.message}`);
-        isPlacingOrder.value = false;
+    const orderDetails = {
+        userId: authStore.user?.id,
+        customerInfo: {
+            firstName: firstName.value,
+            lastName: lastName.value,
+            phone: phone.value,
+            email: email.value,
+        },
+        shippingAddress: {
+            recipientName: `${firstName.value} ${lastName.value}`,
+            phone: phone.value,
+            address: streetAddress.value,
+            city: city.value,
+            country: country.value,
+            postalCode: postalCode.value,
+        },
+        items: cartItems.value.map(item => ({
+            productId: item.produk.id,
+            productName: item.produk.nama_produk,
+            quantity: item.jumlah,
+            price: item.produk.harga,
+            subtotal: item.produk.harga * item.jumlah
+        })),
+        totalAmount: totalPrice.value,
+        paymentMethod: selectedPaymentMethod.value,
+        orderNote: orderNote.value,
+        orderDate: new Date().toISOString(),
+        status: 'Pending' // Initial order status
     }
-};
+
+    console.log('Placing order with details:', orderDetails)
+    
+    alert('Order placement simulated. Check console for details. Actual submission to backend is pending implementation.');
+}
 </script>
 
 <style scoped>
+/* Add any specific styles for this component if needed */
 .form-checkout .fieldset input,
 .form-checkout .fieldset textarea,
-.form-checkout .fieldset select {
+.form-checkout .fieldset select { /* Added select for styling */
     width: 100%;
+    /* Ensure inputs take full width of their container */
 }
-.tf-field-input {
+.tf-field-input { /* Basic styling for select consistency */
     border: 1px solid #e5e5e5;
     padding: 10px 15px;
     border-radius: 3px;
-    background-color: var(--white);
-    color: var(--text-color);
+    background-color: var(--white); /* Or your theme's input background */
+    color: var(--text-color); /* Or your theme's text color */
 }
 
 .address-scroll-container {
     display: flex;
     overflow-x: auto;
-    padding-bottom: 15px;
+    padding-bottom: 15px; /* For scrollbar visibility */
     gap: 15px;
 }
 
 .address-card {
-    flex: 0 0 auto;
-    width: 280px;
+    flex: 0 0 auto; /* Prevent cards from shrinking */
+    width: 280px; /* Adjust width as needed */
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     padding: 15px;
@@ -374,13 +401,13 @@ const placeOrder = async () => {
 }
 
 .address-card:hover {
-    border-color: #6EA820;
+    border-color: #6EA820; /* Theme color */
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .address-card.selected {
-    border-color: #6EA820;
-    box-shadow: 0 0 0 2px #6EA820;
+    border-color: #6EA820; /* Theme color */
+    box-shadow: 0 0 0 2px #6EA820; /* Theme color focus ring */
 }
 
 .address-card p {
@@ -388,7 +415,7 @@ const placeOrder = async () => {
     color: #555;
     line-height: 1.4;
 }
-.address-card .fw-6 {
+.address-card .fw-6 { /* Ensure bold label stands out */
     color: #333;
 }
 
@@ -398,14 +425,14 @@ const placeOrder = async () => {
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: #6EA820;
+    color: #6EA820; /* Theme color */
     font-weight: 500;
 }
 
 .add-new-address-card .icon-plus {
-    font-size: 24px;
+    font-size: 24px; /* Make plus icon larger */
     margin-bottom: 8px;
-    border: 2px dashed #6EA820;
+    border: 2px dashed #6EA820; /* Dashed border for plus icon */
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -414,15 +441,17 @@ const placeOrder = async () => {
     justify-content: center;
 }
 .add-new-address-card .icon-plus::before {
-    content: '+';
+    content: '+'; /* Simple plus sign */
 }
 
+/* Helper classes from theme if needed */
 .mb_4 { margin-bottom: 4px !important; }
 .mb_10 { margin-bottom: 10px !important; }
 .mt_20 { margin-top: 20px !important; }
 .fs-14 { font-size: 14px !important; }
 .fw-6 { font-weight: 600 !important; }
 
+/* Ensure country field is less prominent if read-only */
 input[readonly]#country {
     background-color: #f8f9fa;
     cursor: not-allowed;
