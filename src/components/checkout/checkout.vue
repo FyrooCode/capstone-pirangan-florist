@@ -18,20 +18,22 @@
                         </div>
                         <fieldset class="box fieldset">
                             <label for="country">Country/Region</label>
-                            <input type="text" id="country" v-model="country" placeholder="e.g. Indonesia">
+                            <input type="text" id="country" v-model="country" placeholder="e.g. Indonesia" readonly>
                         </fieldset>
                         <fieldset class="box fieldset">
-                            <label for="city">Town/City</label>
-                            <input type="text" id="city" v-model="city" placeholder="Enter town/city" required>
+                            <label for="streetAddress">Address</label>
+                            <input type="text" id="streetAddress" v-model="streetAddress" placeholder="Enter street address" required>
                         </fieldset>
-                        <fieldset class="box fieldset">
-                            <label for="address">Address</label>
-                            <input type="text" id="address" v-model="streetAddress" placeholder="Enter street address, province, postal code" required>
-                        </fieldset>
-                        <fieldset class="box fieldset">
-                            <label for="postal-code">Postal Code</label>
-                            <input type="text" id="postal-code" v-model="postalCode" placeholder="Enter postal code" required>
-                        </fieldset>
+                        <div class="box grid-2">
+                            <fieldset class="fieldset">
+                                <label for="city">Town/City</label>
+                                <input type="text" id="city" v-model="city" placeholder="Enter town/city" required>
+                            </fieldset>
+                            <fieldset class="fieldset">
+                                <label for="postal-code">Postal Code</label>
+                                <input type="text" id="postal-code" v-model="postalCode" placeholder="Enter postal code" required>
+                            </fieldset>
+                        </div>
                         <fieldset class="box fieldset">
                             <label for="phone">Phone Number</label>
                             <input type="tel" id="phone" v-model="phone" placeholder="Enter phone number" required>
@@ -40,20 +42,40 @@
                             <label for="email">Email</label>
                             <input type="email" id="email" v-model="email" placeholder="Enter email address" required>
                         </fieldset>
-                        <fieldset class="box fieldset">
+                        
+                        <!-- Address Selection -->
+                        <fieldset class="box fieldset mt_20">
+                            <label class="mb_10">Bukan alamat yang diinginkan? Pilih dari bawah atau pilih alamat baru.</label>
+                            <div v-if="isLoadingAddress" class="text-center">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading addresses...</span>
+                                </div>
+                            </div>
+                            <div v-else-if="addressError" class="alert alert-danger py-2 px-3 mb_10">
+                                {{ addressError }}
+                            </div>
+                            <div class="address-scroll-container">
+                                <div v-for="address in userAddresses" :key="address.id" 
+                                     class="address-card"
+                                     :class="{ 'selected': selectedAddressId === address.id }"
+                                     @click="selectAddress(address)">
+                                    <div class="fw-6 mb_4">{{ address.label || 'Alamat' }}</div>
+                                    <p class="mb_4 fs-14">{{ address.nama_penerima }}</p>
+                                    <p class="mb_4 fs-14">{{ address.no_telp_penerima }}</p>
+                                    <p class="mb_4 fs-14">{{ address.alamat_lengkap }}</p>
+                                    <p class="fs-14">{{ address.kota }}, {{ address.provinsi }} {{ address.kode_pos }}</p>
+                                </div>
+                                <div class="address-card add-new-address-card" @click="navigateToAddNewAddress">
+                                    <div class="icon-plus"></div>
+                                    <div>Tambah Alamat Baru</div>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="box fieldset mt_20">
                             <label for="note">Order notes (optional)</label>
                             <textarea name="note" id="note" v-model="orderNote" placeholder="Notes about your order, e.g. special notes for delivery."></textarea>
                         </fieldset>
-                        <div class="box grid-2">
-                            <fieldset class="fieldset">
-                                <label for="address-select">Select Address</label>
-                                <select id="address-select" v-model="selectedAddressId">
-                                    <option v-for="address in userAddresses" :key="address.id" :value="address.id">
-                                        {{ address.label || (address.nama_penerima + ', ' + address.alamat_lengkap) }}
-                                    </option>
-                                </select>
-                            </fieldset>
-                        </div>
                     </form>
                 </div>
                 <div class="tf-page-cart-footer">
@@ -109,6 +131,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router' // Added useRouter
 import { useAuthStore } from '@/stores/authStore'
 import { useCartStore } from '@/stores/cartStore'
 import { supabase } from '@/utils/supabase'
@@ -122,7 +145,7 @@ interface Alamat {
     no_telp_penerima: string
     alamat_lengkap: string
     kota: string
-    provinsi: string
+    provinsi: string // Added to match alamat.vue
     kode_pos: string
     is_utama: boolean
     created_at?: string
@@ -130,6 +153,7 @@ interface Alamat {
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const router = useRouter() // Initialize router
 
 // Form data
 const firstName = ref('')
@@ -139,15 +163,15 @@ const city = ref('')
 const streetAddress = ref('')
 const phone = ref('')
 const email = ref('')
-const postalCode = ref('') // Added postalCode
+const postalCode = ref('')
 const orderNote = ref('')
 
 // Address data
 const userAddresses = ref<Alamat[]>([])
-const defaultAddress = ref<Alamat | null>(null) // Keep for reference
+const defaultAddress = ref<Alamat | null>(null)
 const isLoadingAddress = ref(false)
 const addressError = ref<string | null>(null)
-const selectedAddressId = ref<number | null>(null); // To store the ID of the selected address, or null for manual/new
+const selectedAddressId = ref<number | null>(null);
 
 // Payment method
 const selectedPaymentMethod = ref('bank'); // Default payment method
@@ -157,17 +181,42 @@ const cartItems = computed(() => cartStore.cartItems)
 const totalPrice = computed(() => cartStore.totalPrice)
 
 // Update form fields with selected address
-const updateFormWithAddress = (address: Alamat) => {
-    const nameParts = (address.nama_penerima || '').split(' ');
-    firstName.value = nameParts[0] || '';
-    lastName.value = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-    
-    phone.value = address.no_telp_penerima || '';
-    streetAddress.value = address.alamat_lengkap || '';
-    city.value = address.kota || '';
-    postalCode.value = address.kode_pos || '';
-    // country.value typically remains 'Indonesia'
-    // email.value is user's account email
+const updateFormWithAddress = (address: Alamat | null) => {
+    if (address) {
+        const nameParts = (address.nama_penerima || '').split(' ');
+        firstName.value = nameParts[0] || '';
+        lastName.value = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        
+        phone.value = address.no_telp_penerima || '';
+        streetAddress.value = address.alamat_lengkap || '';
+        city.value = address.kota || '';
+        postalCode.value = address.kode_pos || '';
+        // country.value remains 'Indonesia'
+        // email.value is user's account email, should not be overwritten by address
+    } else {
+        // Clear address-specific fields if no address is selected (manual entry)
+        // Keep profile names if available, otherwise clear
+        if (authStore.userProfile) {
+            firstName.value = authStore.userProfile.first_name || '';
+            lastName.value = authStore.userProfile.last_name || '';
+        } else {
+            firstName.value = '';
+            lastName.value = '';
+        }
+        phone.value = ''; 
+        streetAddress.value = '';
+        city.value = '';
+        postalCode.value = '';
+    }
+};
+
+const selectAddress = (address: Alamat) => {
+    selectedAddressId.value = address.id ?? null;
+    updateFormWithAddress(address);
+};
+
+const navigateToAddNewAddress = () => {
+    router.push({ path: '/akun-saya', query: { tab: 'address' } });
 };
 
 // Fetch addresses function
@@ -180,7 +229,7 @@ const fetchAddresses = async () => {
     addressError.value = null
     try {
         const { data, error } = await supabase
-            .from('alamat_pengguna') // Corrected table name
+            .from('alamat_pengguna')
             .select('*')
             .eq('user_id', authStore.user.id)
             .order('is_utama', { ascending: false })
@@ -192,26 +241,20 @@ const fetchAddresses = async () => {
         const foundDefaultAddress = userAddresses.value.find(addr => addr.is_utama) || userAddresses.value[0] || null;
 
         if (foundDefaultAddress) {
-            defaultAddress.value = foundDefaultAddress;
-            if (selectedAddressId.value === null || selectedAddressId.value === foundDefaultAddress.id) { // Auto-select default if nothing is selected or if it's the current default
-                updateFormWithAddress(foundDefaultAddress);
-                selectedAddressId.value = foundDefaultAddress.id ?? null;
+            defaultAddress.value = foundDefaultAddress; // Keep for reference
+            // Auto-select the default address initially
+            if (selectedAddressId.value === null) {
+                selectAddress(foundDefaultAddress);
             }
         } else {
-            // No addresses found, or no default.
-            if (selectedAddressId.value !== null) {
-                 selectedAddressId.value = null; // Trigger watcher to reset form for manual entry
-            } else {
-                // If already null, ensure address fields are clear (profile names handled by their watcher)
-                phone.value = '';
-                streetAddress.value = '';
-                city.value = '';
-                postalCode.value = '';
-            }
+            // No addresses found, clear form for manual entry
+            updateFormWithAddress(null);
         }
     } catch (err: any) {
         console.error('Error fetching addresses:', err)
         addressError.value = err.message || 'Failed to fetch addresses.'
+        userAddresses.value = []; // Clear addresses on error
+        updateFormWithAddress(null); // Reset form
     } finally {
         isLoadingAddress.value = false
     }
@@ -219,7 +262,7 @@ const fetchAddresses = async () => {
 
 // Watchers to populate form data
 watch(() => authStore.userProfile, (profile) => {
-    // Only set from profile if no address is currently selected driving these fields
+    // Only set from profile if no address is currently selected
     if (profile && selectedAddressId.value === null) {
         firstName.value = profile.first_name || ''
         lastName.value = profile.last_name || ''
@@ -229,8 +272,7 @@ watch(() => authStore.userProfile, (profile) => {
 watch(() => authStore.user, (currentUser, prevUser) => {
     if (currentUser) {
         email.value = currentUser.email || ''
-        // Fetch addresses if user changes or logs in
-        if (currentUser.id !== prevUser?.id) {
+        if (currentUser.id !== prevUser?.id || userAddresses.value.length === 0) { // Fetch if user changes or addresses not loaded
             fetchAddresses() 
         }
     } else {
@@ -238,44 +280,19 @@ watch(() => authStore.user, (currentUser, prevUser) => {
         firstName.value = ''
         lastName.value = ''
         email.value = ''
-        city.value = ''
-        streetAddress.value = ''
-        phone.value = ''
-        postalCode.value = ''
+        updateFormWithAddress(null); // Clear address fields
         userAddresses.value = []
         defaultAddress.value = null
         selectedAddressId.value = null;
     }
 }, { immediate: true, deep: true })
 
-watch(selectedAddressId, (newId) => {
-    if (newId && typeof newId === 'number') {
-        const selectedAddr = userAddresses.value.find(addr => addr.id === newId);
-        if (selectedAddr) {
-            updateFormWithAddress(selectedAddr);
-        }
-    } else if (newId === null) { 
-        // Manual entry mode: Reset to profile names, clear address specifics
-        if (authStore.userProfile) {
-            firstName.value = authStore.userProfile.first_name || '';
-            lastName.value = authStore.userProfile.last_name || '';
-        } else {
-            firstName.value = '';
-            lastName.value = '';
-        }
-        phone.value = ''; 
-        streetAddress.value = '';
-        city.value = '';
-        postalCode.value = '';
-        // email is already populated from authStore.user
-    }
-});
 
 onMounted(async () => {
     if (!authStore.isLoggedIn && !authStore.loading) {
-      await authStore.initialize(); // This will trigger user watcher, which calls fetchAddresses
-    } else if (authStore.isLoggedIn) {
-      await fetchAddresses(); // Explicitly fetch if already logged in and watchers might not cover initial state
+      await authStore.initialize(); 
+    } else if (authStore.isLoggedIn && userAddresses.value.length === 0) { // Fetch if logged in but addresses not loaded
+      await fetchAddresses(); 
     }
     await cartStore.fetchCartItems();
 })
@@ -327,7 +344,7 @@ const placeOrder = async () => {
             address: streetAddress.value,
             city: city.value,
             country: country.value,
-            postalCode: postalCode.value, // Added postalCode
+            postalCode: postalCode.value,
         },
         items: cartItems.value.map(item => ({
             productId: item.produk.id,
@@ -345,17 +362,6 @@ const placeOrder = async () => {
 
     console.log('Placing order with details:', orderDetails)
     
-    // TODO: Implement actual order submission to backend (e.g., Supabase)
-    // try {
-    //   const { data, error } = await supabase.from('orders').insert([orderDetails]).select();
-    //   if (error) throw error;
-    //   alert('Order placed successfully! Order ID: ' + data[0].id);
-    //   cartStore.clearCart(); 
-    //   // router.push({ name: 'OrderConfirmation', params: { orderId: data[0].id } });
-    // } catch (err: any) {
-    //   console.error('Error placing order:', err);
-    //   alert(`Failed to place order: ${err.message}`);
-    // }
     alert('Order placement simulated. Check console for details. Actual submission to backend is pending implementation.');
 }
 </script>
@@ -374,5 +380,80 @@ const placeOrder = async () => {
     border-radius: 3px;
     background-color: var(--white); /* Or your theme's input background */
     color: var(--text-color); /* Or your theme's text color */
+}
+
+.address-scroll-container {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 15px; /* For scrollbar visibility */
+    gap: 15px;
+}
+
+.address-card {
+    flex: 0 0 auto; /* Prevent cards from shrinking */
+    width: 280px; /* Adjust width as needed */
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    background-color: #fff;
+}
+
+.address-card:hover {
+    border-color: #6EA820; /* Theme color */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.address-card.selected {
+    border-color: #6EA820; /* Theme color */
+    box-shadow: 0 0 0 2px #6EA820; /* Theme color focus ring */
+}
+
+.address-card p {
+    margin-bottom: 5px;
+    color: #555;
+    line-height: 1.4;
+}
+.address-card .fw-6 { /* Ensure bold label stands out */
+    color: #333;
+}
+
+.add-new-address-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #6EA820; /* Theme color */
+    font-weight: 500;
+}
+
+.add-new-address-card .icon-plus {
+    font-size: 24px; /* Make plus icon larger */
+    margin-bottom: 8px;
+    border: 2px dashed #6EA820; /* Dashed border for plus icon */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.add-new-address-card .icon-plus::before {
+    content: '+'; /* Simple plus sign */
+}
+
+/* Helper classes from theme if needed */
+.mb_4 { margin-bottom: 4px !important; }
+.mb_10 { margin-bottom: 10px !important; }
+.mt_20 { margin-top: 20px !important; }
+.fs-14 { font-size: 14px !important; }
+.fw-6 { font-weight: 600 !important; }
+
+/* Ensure country field is less prominent if read-only */
+input[readonly]#country {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
 }
 </style>
