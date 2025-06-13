@@ -1,335 +1,144 @@
 <template>
-    <div class="my-account-content account-order-detail">
-        <div class="section-title d-flex justify-content-between align-items-center mb-4">
-            <h4>Detail Pesanan #{{ currentOrderId }}</h4>
-            <a href="#" @click.prevent="$emit('goBack')" class="btn-link">
-                <i class="icon icon-arrow-left me-1"></i> Kembali
-            </a>
-        </div>
 
-        <div class="order-info mb-4">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Informasi Pesanan</h5>
-                    <p><strong>Tanggal:</strong> {{ orderDetails.date }}</p>
-                    <p><strong>Status:</strong> {{ orderDetails.status }}</p>
-                    <p><strong>Metode Pembayaran:</strong> {{ orderDetails.paymentMethod }}</p>
-                </div>
-                <div class="col-md-6">
-                    <h5>Alamat Pengiriman</h5>
-                    <p>
-                        {{ orderDetails.shippingAddress.name }}<br>
-                        {{ orderDetails.shippingAddress.street }}<br>
-                        {{ orderDetails.shippingAddress.city }}, {{ orderDetails.shippingAddress.province }} {{ orderDetails.shippingAddress.postalCode }}<br>
-                        {{ orderDetails.shippingAddress.country }}<br>
-                        <strong>Telp:</strong> {{ orderDetails.shippingAddress.phone }}
-                    </p>
-                </div>
+    <div class="wd-form-order">
+        <div class="order-head">
+            <figure class="img-product">
+                <img src="/user/images/products/brown.jpg" alt="product">
+            </figure>
+            <div class="content">
+                <div class="badge">In Progress</div>
+                <h6 class="mt-8 fw-5">Order #17493</h6>
             </div>
         </div>
+        <div class="tf-grid-layout md-col-2 gap-15">
+            <div class="item">
+                <div class="text-2 text_black-2">Item</div>
+                <div class="text-2 mt_4 fw-6">Fashion</div>
+            </div>
+            <div class="item">
+                <div class="text-2 text_black-2">Courier</div>
+                <div class="text-2 mt_4 fw-6">Ribbed modal T-shirt</div>
+            </div>
+            <div class="item">
+                <div class="text-2 text_black-2">Start Time</div>
+                <div class="text-2 mt_4 fw-6">04 September 2024, 13:30:23</div>
+            </div>
+            <div class="item">
+                <div class="text-2 text_black-2">Address</div>
+                <div class="text-2 mt_4 fw-6">1234 Fashion Street, Suite 567, New York</div>
+            </div>
+        </div>
+        <div class="widget-tabs style-has-border widget-order-tab">
+            <ul class="widget-menu-tab">
+                <li class="item-title active">
+                    <span class="inner">Order History</span>
+                </li>
+                <li class="item-title">
+                    <span class="inner">Item Details</span>
+                </li>
+                <li class="item-title">
+                    <span class="inner">Courier</span>
+                </li>
+                <li class="item-title">
+                    <span class="inner">Receiver</span>
+                </li>
+            </ul>
+            <div class="widget-content-tab">
+                <div class="widget-content-inner active">
+                    <div class="widget-timeline">
+                        <ul class="timeline">
+                            <li>
+                                <div class="timeline-badge success"></div>
+                                <div class="timeline-box">
+                                    <a class="timeline-panel" href="javascript:void(0);">
+                                        <div class="text-2 fw-6">Product Shipped</div>
+                                        <span>10/07/2024 4:30pm</span>
+                                    </a>
+                                    <p><strong>Courier Service : </strong>FedEx World Service Center</p>
+                                    <p><strong>Estimated Delivery Date : </strong>12/07/2024</p>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="timeline-badge success"></div>
+                                <div class="timeline-box">
+                                    <a class="timeline-panel" href="javascript:void(0);">
+                                        <div class="text-2 fw-6">Product Shipped</div>
+                                        <span>10/07/2024 4:30pm</span>
+                                    </a>
+                                    <p><strong>Tracking Number : </strong>2307-3215-6759</p>
+                                    <p><strong>Warehouse : </strong>T-Shirt 10b</p>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="timeline-badge"></div>
+                                <div class="timeline-box">
+                                    <a class="timeline-panel" href="javascript:void(0);">
+                                        <div class="text-2 fw-6">Product Packaging</div>
+                                        <span>12/07/2024 4:34pm</span>
+                                    </a>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="timeline-badge"></div>
+                                <div class="timeline-box">
+                                    <a class="timeline-panel" href="javascript:void(0);">
+                                        <div class="text-2 fw-6">Order Placed</div>
+                                        <span>11/07/2024 2:36pm</span>
+                                    </a>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="widget-content-inner">
+                    <div class="order-head">
+                        <figure class="img-product">
+                            <img src="/user/images/products/brown.jpg" alt="product">
+                        </figure>
+                        <div class="content">
+                            <div class="text-2 fw-6">Ribbed modal T-shirt</div>
+                            <div class="mt_4"><span class="fw-6">Price :</span> $28.95</div>
+                            <div class="mt_4"><span class="fw-6">Size :</span> XL</div>
+                        </div>
+                    </div>
+                    <ul>
+                        <li class="d-flex justify-content-between text-2">
+                            <span>Total Price</span>
+                            <span class="fw-6">$28.95</span>
+                        </li>
+                        <li class="d-flex justify-content-between text-2 mt_4 pb_8 line">
+                            <span>Total Discounts</span>
+                            <span class="fw-6">$10</span>
 
-        <div class="order-items mb-4">
-            <h5>Produk yang Dipesan</h5>
-            <div class="table-responsive">
-                <table class="order-items-table">
-                    <thead>
-                        <tr>
-                            <th>Produk</th>
-                            <th>Harga</th>
-                            <th>Jumlah</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in orderDetails.items" :key="item.id">
-                            <td>{{ item.name }}</td>
-                            <td>Rp {{ item.price.toLocaleString() }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>Rp {{ (item.price * item.quantity).toLocaleString() }}</td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th colspan="3">Subtotal</th>
-                            <td>Rp {{ orderDetails.subtotal.toLocaleString() }}</td>
-                        </tr>
-                        <tr>
-                            <th colspan="3">Pengiriman</th>
-                            <td>Rp {{ orderDetails.shipping.toLocaleString() }}</td>
-                        </tr>
-                        <tr>
-                            <th colspan="3">Total</th>
-                            <td>Rp {{ orderDetails.total.toLocaleString() }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                        </li>
+                        <li class="d-flex justify-content-between text-2 mt_8">
+                            <span>Order Total</span>
+                            <span class="fw-6">$18.95</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="widget-content-inner">
+                    <p>Our courier service is dedicated to providing fast, reliable, and secure delivery solutions
+                        tailored to meet your needs. Whether you're sending documents, parcels, or larger shipments, our
+                        team ensures that your items are handled with the utmost care and delivered on time. With a
+                        commitment to customer satisfaction, real-time tracking, and a wide network of routes, we make
+                        it easy for you to send and receive packages both locally and internationally. Choose our
+                        service for a seamless and efficient delivery experience.</p>
+                </div>
+                <div class="widget-content-inner">
+                    <p class="text-2 text_success">Thank you Your order has been received</p>
+                    <ul class="mt_20">
+                        <li>Order Number : <span class="fw-7">#17493</span></li>
+                        <li>Date : <span class="fw-7"> 17/07/2024, 02:34pm</span></li>
+                        <li>Total : <span class="fw-7">$18.95</span></li>
+                        <li>Payment Methods : <span class="fw-7">Cash on Delivery</span></li>
+
+                    </ul>
+                </div>
+
             </div>
         </div>
     </div>
+
+
 </template>
-
-<script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-
-interface Props {
-    orderId: string;
-}
-
-const props = defineProps<Props>();
-
-// Define emits
-defineEmits<{
-    goBack: []
-}>();
-
-// Current order ID
-const currentOrderId = computed(() => props.orderId);
-
-// Mock order details - replace with real data later
-const orderDetails = ref({
-    date: '2 Agustus 2024',
-    status: 'Diproses',
-    paymentMethod: 'Transfer Bank',
-    shippingAddress: {
-        name: 'John Doe',
-        street: 'Jl. Merdeka No. 123',
-        city: 'Bandung',
-        province: 'Jawa Barat',
-        postalCode: '40112',
-        country: 'Indonesia',
-        phone: '081234567890'
-    },
-    items: [
-        {
-            id: 1,
-            name: 'Buket Bunga Mawar',
-            price: 150000,
-            quantity: 2
-        }
-    ],
-    subtotal: 300000,
-    shipping: 20000,
-    total: 320000
-});
-
-// Watch for order ID changes to load different order details
-watch(() => props.orderId, (newOrderId) => {
-    // TODO: Load order details based on order ID
-    console.log('Loading order details for:', newOrderId);
-    // For now, just update the mock data based on order ID
-    updateOrderDetails(newOrderId);
-});
-
-const updateOrderDetails = (orderId: string) => {
-    // Mock different order details based on order ID
-    switch (orderId) {
-        case '123':
-            orderDetails.value = {
-                date: '1 Agustus 2024',
-                status: 'Menunggu',
-                paymentMethod: 'Transfer Bank',
-                shippingAddress: {
-                    name: 'John Doe',
-                    street: 'Jl. Merdeka No. 123',
-                    city: 'Bandung',
-                    province: 'Jawa Barat',
-                    postalCode: '40112',
-                    country: 'Indonesia',
-                    phone: '081234567890'
-                },
-                items: [
-                    {
-                        id: 1,
-                        name: 'Buket Bunga Mawar Merah',
-                        price: 200000,
-                        quantity: 1
-                    }
-                ],
-                subtotal: 200000,
-                shipping: 15000,
-                total: 215000
-            };
-            break;
-        case '345':
-            orderDetails.value = {
-                date: '2 Agustus 2024',
-                status: 'Diproses',
-                paymentMethod: 'Transfer Bank',
-                shippingAddress: {
-                    name: 'John Doe',
-                    street: 'Jl. Merdeka No. 123',
-                    city: 'Bandung',
-                    province: 'Jawa Barat',
-                    postalCode: '40112',
-                    country: 'Indonesia',
-                    phone: '081234567890'
-                },
-                items: [
-                    {
-                        id: 1,
-                        name: 'Buket Bunga Mawar',
-                        price: 150000,
-                        quantity: 2
-                    }
-                ],
-                subtotal: 300000,
-                shipping: 20000,
-                total: 320000
-            };
-            break;
-        case '567':
-            orderDetails.value = {
-                date: '3 Agustus 2024',
-                status: 'Dikirim',
-                paymentMethod: 'Transfer Bank',
-                shippingAddress: {
-                    name: 'John Doe',
-                    street: 'Jl. Merdeka No. 123',
-                    city: 'Bandung',
-                    province: 'Jawa Barat',
-                    postalCode: '40112',
-                    country: 'Indonesia',
-                    phone: '081234567890'
-                },
-                items: [
-                    {
-                        id: 1,
-                        name: 'Rangkaian Bunga Lily',
-                        price: 175000,
-                        quantity: 2
-                    },
-                    {
-                        id: 2,
-                        name: 'Buket Bunga Matahari',
-                        price: 125000,
-                        quantity: 1
-                    }
-                ],
-                subtotal: 475000,
-                shipping: 25000,
-                total: 500000
-            };
-            break;
-    }
-};
-</script>
-
-<style scoped>
-.section-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.section-title h4 {
-    font-size: 20px;
-    margin-bottom: 0;
-    font-weight: 600;
-}
-
-.btn-link {
-    color: #6EA820;
-    text-decoration: none;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-}
-
-.btn-link:hover {
-    color: #5a8a1b;
-    text-decoration: underline;
-}
-
-.btn-link i {
-    margin-right: 4px;
-}
-
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    margin-left: -15px;
-    margin-right: -15px;
-}
-
-.col-md-6 {
-    flex: 0 0 50%;
-    max-width: 50%;
-    padding-left: 15px;
-    padding-right: 15px;
-}
-
-@media (max-width: 767.98px) {
-    .col-md-6 {
-        flex: 0 0 100%;
-        max-width: 100%;
-        margin-bottom: 2rem;
-    }
-    
-    .section-title {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-}
-
-.order-info h5,
-.order-items h5 {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 15px;
-}
-
-.order-info p {
-    margin-bottom: 8px;
-    line-height: 1.6;
-}
-
-.table-responsive {
-    overflow-x: auto;
-}
-
-/* Order detail styling */
-.order-items-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.order-items-table th,
-.order-items-table td {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
-    text-align: left;
-}
-
-.order-items-table th {
-    background-color: #f8f8f8;
-    font-weight: 600;
-}
-
-.order-items-table tfoot th,
-.order-items-table tfoot td {
-    font-weight: 600;
-    border-top: 2px solid #ddd;
-    background-color: #f9f9f9;
-}
-
-.mb-4 {
-    margin-bottom: 1.5rem;
-}
-
-.d-flex {
-    display: flex;
-}
-
-.justify-content-between {
-    justify-content: space-between;
-}
-
-.align-items-center {
-    align-items: center;
-}
-
-.me-1 {
-    margin-right: 0.25rem;
-}
-</style>
