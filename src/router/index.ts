@@ -89,15 +89,6 @@ const router = createRouter({
           }
         },
         {
-          path: 'katalog',
-          name: 'katalog',
-          component: KatalogView,
-          meta: {
-            title: 'Katalog Produk | Priangan Florist',
-            // requiresAuth: true
-          }
-        },
-        {
           path: 'detail-produk/:id', // Changed path
           name: 'ProductDetail',    // Changed name
           component: DetailProduk,
@@ -107,7 +98,7 @@ const router = createRouter({
             // requiresAuth: true
           }
         },
-        
+
 
         // Unauthorized access page
         {
