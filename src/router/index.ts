@@ -17,6 +17,7 @@ import KatalogView from '@/views/KatalogView.vue'
 import CheckoutView from '@/views/CheckoutView.vue'
 import AdminAddProductView from '@/views/admin/AdminAddProductView.vue'
 import AdminOrderListView from '@/views/admin/AdminOrderListView.vue'
+import AdminOrderDetailView from '@/views/admin/AdminOrderDetailView.vue'
 // import AdminAuth from '@/layouts/adminAuth.vue'
 // import AdminLogin from '@/views/admin/AdminLogin.vue'
 
@@ -243,6 +244,17 @@ const router = createRouter({
           component: AdminOrderListView,
           meta: {
             title: 'order list | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'order-detail/:id', // Order detail route
+          name: 'order detail',
+          component: AdminOrderDetailView,
+          props: true,
+          meta: {
+            title: 'Order Detail | Priangan Florist',
             requiresAuth: true,
             requiresAdmin: true
           }
