@@ -71,6 +71,16 @@ export default {
             { title: 'Tambah Kategori', route: 'tambah kategori' },
           ],
         },
+        {
+          title: 'Order',
+          link: 'javascript:void(0);',
+          icon: '<i class="icon-layers"></i>',
+          open: undefined, // Initialize as undefined to allow auto-open behavior initially
+          children: [
+            { title: 'Order List', route: 'order list' },
+            // { title: 'Tambah Kategori', route: 'tambah kategori' },
+          ],
+        },
       ],
     };
   },

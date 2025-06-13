@@ -16,6 +16,7 @@ import DetailProduk from '@/views/ProductDetail.vue'
 import KatalogView from '@/views/KatalogView.vue'
 import CheckoutView from '@/views/CheckoutView.vue'
 import AdminAddProductView from '@/views/admin/AdminAddProductView.vue'
+import AdminOrderListView from '@/views/admin/AdminOrderListView.vue'
 // import AdminAuth from '@/layouts/adminAuth.vue'
 // import AdminLogin from '@/views/admin/AdminLogin.vue'
 
@@ -237,6 +238,16 @@ const router = createRouter({
           }
         },
         {
+          path: 'order-list', // Default child route
+          name: 'order list',
+          component: AdminOrderListView,
+          meta: {
+            title: 'order list | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
           path: 'tambah-kategori', // Default child route
           name: 'tambah kategori',
           component: AdminAddCategoryView,
@@ -246,7 +257,6 @@ const router = createRouter({
             requiresAdmin: true
           }
         },
-        // Add any other admin routes here as needed
       ],
     },
 
