@@ -60,10 +60,15 @@
                     <div v-else-if="error" class="alert alert-danger">
                         {{ error }}
                     </div> <!-- Orders Table -->
-                    <div v-else class="wg-table table-all-category">
-                        <ul class="table-title flex gap20 mb-14">
-                            <li class="order-info-col">
+                    <div v-else class="wg-table table-all-category">                        <ul class="table-title flex gap20 mb-14">
+                            <!-- <li class="order-info-col">
                                 <div class="body-title">Order Info</div>
+                            </li> -->
+                            <li>
+                                <div class="body-title">Items Ordered</div>
+                            </li>
+                            <li>
+                                <div class="body-title">Quantity</div>
                             </li>
                             <li>
                                 <div class="body-title">Customer</div>
@@ -73,8 +78,7 @@
                             </li>
                             <li>
                                 <div class="body-title">Total Amount</div>
-                            </li>
-                            <li>
+                            </li>                            <li>
                                 <div class="body-title">Delivery Type</div>
                             </li>
                             <li>
@@ -87,9 +91,6 @@
                                 <div class="body-title">Shipping Status</div>
                             </li>
                             <li>
-                                <div class="body-title">Date</div>
-                            </li>
-                            <li>
                                 <div class="body-title">Action</div>
                             </li>
                         </ul>
@@ -97,19 +98,41 @@
                         <!-- No Orders Message -->
                         <div v-if="filteredOrders.length === 0" class="text-center py-4">
                             <p class="body-text">No orders found.</p>
-                        </div>
-
-                        <!-- Orders List -->
-                        <ul v-else class="flex flex-column">
-                            <li v-for="order in paginatedOrders" :key="order.id" class="wg-product item-row gap20">
+                        </div>                        <!-- Orders List -->
+                        <ul v-else class="flex flex-column">                            <li v-for="order in paginatedOrders" :key="order.id" class="wg-product item-row gap20 clickable-row" @click="viewOrder(order)">
                                 <!-- Order Info -->
-                                <div class="name order-info-col">
+                                <!-- <div class="name order-info-col">
                                     <div class="title">
-                                        <div class="body-text fw-6">{{ order.order_id }}</div>
+                                        <div class="body-text fw-6">
+                                            {{ order.order_id }}
+                                        </div>
                                         <div class="text-tiny text-secondary">
-                                            {{ order.detail_transaksi?.length || 0 }} item(s)
+                                            {{ formatDate(order.tanggal_transaksi) }}
                                         </div>
                                     </div>
+                                </div> -->                                <!-- Items Ordered -->
+                                <div class="body-text text-main-dark">
+                                    <template v-if="order.detail_transaksi && order.detail_transaksi.length > 0">
+                                        <div v-for="(item, index) in order.detail_transaksi.slice(0, 2)" :key="item.id" class="fw-6">
+                                            {{ item.nama_produk }}
+                                        </div>
+                                        <div v-if="order.detail_transaksi.length > 2" class="text-tiny text-secondary">
+                                            +{{ order.detail_transaksi.length - 2 }} more items
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <span class="text-secondary">No items</span>
+                                    </template>
+                                </div><!-- Quantity -->
+                                <div class="body-text text-main-dark">
+                                    <template v-if="order.detail_transaksi && order.detail_transaksi.length > 0">
+                                        <div class="fw-6">
+                                            {{ order.detail_transaksi.reduce((total, item) => total + item.jumlah, 0) }} items
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        -
+                                    </template>
                                 </div>
 
                                 <!-- Customer -->
@@ -149,22 +172,13 @@
                                     <div :class="[getPaymentStatusClass(order.status_pembayaran), 'bg-1', 'fw-7']">
                                         {{ formatPaymentStatus(order.status_pembayaran) }}
                                     </div>
-                                </div>
-
-                                <!-- Shipping Status -->
+                                </div>                                <!-- Shipping Status -->
                                 <div>
                                     <div class="block-tracking bg-1">
                                         {{ formatShippingStatus(order.status_pengiriman) }}
                                     </div>
-                                </div>
-
-                                <!-- Date -->
-                                <div class="body-text text-main-dark">
-                                    {{ formatDate(order.tanggal_transaksi) }}
-                                </div>
-
-                                <!-- Actions -->
-                                <div class="list-icon-function">
+                                </div>                                <!-- Actions -->
+                                <div class="list-icon-function" @click.stop>
                                     <div class="item eye" @click="viewOrder(order)" title="View Details">
                                         <i class="icon-eye"></i>
                                     </div>
@@ -186,7 +200,7 @@
                     <div class="flex items-center justify-between flex-wrap gap10">
                         <div class="text-tiny">
                             Showing {{ startIndex + 1 }} to {{ Math.min(endIndex, filteredOrders.length) }} of {{
-                            filteredOrders.length }}
+                                filteredOrders.length }}
                             entries
                         </div>
                         <ul class="wg-pagination">
@@ -527,21 +541,27 @@ onMounted(async () => {
 
 .order-info-col {
     flex: 0 0 auto !important;
-    min-width: 300px !important; /* Increased significantly for long order IDs */
-    width: 300px !important; /* Explicitly set width */
-    max-width: none !important; /* Prevent max-width constraints */
+    min-width: 200px !important;
+    /* Reasonable width for order info */
+    width: 200px !important;
+    /* Explicitly set width */
+    max-width: none !important;
+    /* Prevent max-width constraints */
     white-space: nowrap !important;
-    overflow: visible !important; /* Ensure content is not clipped */
+    overflow: visible !important;
+    /* Ensure content is not clipped */
 }
 
 /* Override the global CSS rule that limits the first column width */
-.wg-table.table-all-category .wg-product > *:nth-child(1),
-.wg-table.table-all-category ul.table-title > *:nth-child(1) {
-    width: 300px !important; /* Increased significantly */
-    min-width: 300px !important;
+.wg-table.table-all-category .wg-product>*:nth-child(1),
+.wg-table.table-all-category ul.table-title>*:nth-child(1) {
+    width: 200px !important;
+    /* Reasonable width for Items Ordered column */
+    min-width: 200px !important;
     max-width: none !important;
     flex-shrink: 0 !important;
-    overflow: visible !important; /* Ensure content is not clipped */
+    overflow: visible !important;
+    /* Ensure content is not clipped */
 }
 
 /* Ensure the order ID text doesn't get truncated */
@@ -606,5 +626,28 @@ onMounted(async () => {
 
 .text-secondary {
     color: #6c757d !important;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.clickable-row:hover {
+    background-color: rgba(0, 123, 255, 0.05) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.clickable-items {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.clickable-items:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: #007bff !important;
 }
 </style>
