@@ -43,11 +43,34 @@
                                 <div class="text-tiny">Order {{ order.order_id }}</div>
                             </li>
                         </ul>
-                    </div>
-
-                    <!-- order-detail -->
+                    </div>                    <!-- order-detail -->
                     <div class="wg-order-detail">
-                        <div class="left flex-grow">
+                        <div class="left flex-grow">                            <!-- Action Buttons -->
+                            <div class="wg-box mb-20 gap10">
+                                <div class="body-title mb-20">Order Actions</div>
+                                <div class="action-buttons-grid">
+                                    <button 
+                                        class="tf-button style-1 w-full" 
+                                        @click="goBack"
+                                    >
+                                        <i class="icon-arrow-left"></i>Back to Orders
+                                    </button>
+                                    <button 
+                                        class="tf-button style-1 w-full" 
+                                        @click="showUpdateModal = true"
+                                        :disabled="loading || order.status_pengiriman === 'diterima'"
+                                    >
+                                        <i class="icon-edit-3"></i>Update Status
+                                    </button>
+                                    <button 
+                                        class="tf-button style-1 w-full"
+                                        @click="goToTracking"
+                                    >
+                                        <i class="icon-truck"></i>Track Order
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- Order Items -->
                             <div class="wg-box mb-20">
                                 <div class="wg-table table-order-detail">
@@ -205,25 +228,7 @@
                                 <div class="body-text">{{ order.payment_type }}</div>
                                 <div v-if="order.midtrans_order_id" class="text-tiny text-secondary mt-2">
                                     Transaction ID: {{ order.midtrans_order_id }}
-                                </div>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="wg-box gap10">
-                                <button 
-                                    class="tf-button style-1 w-full mb-10" 
-                                    @click="editOrder"
-                                    :disabled="loading"
-                                >
-                                    <i class="icon-edit-3"></i>Update Status
-                                </button>
-                                <button 
-                                    class="tf-button style-2 w-full" 
-                                    @click="goBack"
-                                >
-                                    <i class="icon-arrow-left"></i>Back to Orders
-                                </button>
-                            </div>
+                                </div>                            </div>
                         </div>
                     </div>
                     <!-- /order-detail -->
@@ -245,14 +250,67 @@
         <div class="bottom-page">
             <div class="body-text">Copyright © 2024 <a href="https://themesflat.co/html/ecomus/index.html">Ecomus</a>.
                 Design by Themesflat All rights reserved</div>
-        </div>
-        <!-- /bottom-page -->
+        </div>        <!-- /bottom-page -->
     </div>
     <!-- /main-content -->
+
+    <!-- Status Update Modal -->
+    <div v-if="showUpdateModal" class="modal-overlay" @click="closeModal">
+        <div class="modal-content" @click.stop>
+            <div class="modal-header">
+                <h5>Update Order Status</h5>
+                <button @click="closeModal" class="btn-close">
+                    <i class="icon-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-20">
+                    <label class="body-title mb-10">Current Status:</label>
+                    <div :class="['status-badge', getStatusClass(order.status_pengiriman)]">
+                        {{ formatShippingStatus(order.status_pengiriman) }}
+                    </div>
+                </div>
+                <div class="mb-20">
+                    <label class="body-title mb-10">Update to:</label>
+                    <select v-model="newStatus" class="form-select">
+                        <option value="">Select new status</option>
+                        <option 
+                            v-for="status in availableStatuses" 
+                            :key="status.value" 
+                            :value="status.value"
+                            :disabled="!status.enabled"
+                        >
+                            {{ status.label }}
+                        </option>
+                    </select>
+                </div>
+                <div v-if="newStatus" class="mb-20">
+                    <label class="body-title mb-10">Notes (Optional):</label>
+                    <textarea 
+                        v-model="statusNotes" 
+                        class="form-textarea" 
+                        rows="3"
+                        placeholder="Add any notes about this status update..."
+                    ></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button @click="closeModal" class="tf-button style-2">Cancel</button>
+                <button 
+                    @click="updateOrderStatus" 
+                    class="tf-button style-1"
+                    :disabled="!newStatus || updatingStatus"
+                >
+                    <span v-if="updatingStatus">Updating...</span>
+                    <span v-else>Update Status</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/utils/supabase'
 
@@ -307,9 +365,33 @@ const router = useRouter()
 const order = ref<Transaksi | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const showUpdateModal = ref(false)
+const newStatus = ref('')
+const statusNotes = ref('')
+const updatingStatus = ref(false)
 
 // Get order ID from route params
 const orderId = route.params.id as string
+
+// Status definitions
+const statusFlow = ['diproses', 'dikirim', 'diterima']
+const statusLabels = {
+    'diproses': 'Processing',
+    'dikirim': 'Shipped',
+    'diterima': 'Delivered'
+}
+
+// Computed properties
+const availableStatuses = computed(() => {
+    if (!order.value) return []
+    
+    const currentIndex = statusFlow.indexOf(order.value.status_pengiriman)
+    return statusFlow.map((status, index) => ({
+        value: status,
+        label: statusLabels[status as keyof typeof statusLabels],
+        enabled: index > currentIndex
+    }))
+})
 
 // Methods
 const fetchOrderDetail = async () => {    try {
@@ -417,6 +499,52 @@ const getDeliveryTypeClass = (type: string) => {
     return classMap[type] || 'block-pending'
 }
 
+const updateOrderStatus = async () => {
+    if (!order.value || !newStatus.value) return
+    
+    try {
+        updatingStatus.value = true
+        
+        const { error: updateError } = await supabase
+            .from('transaksi')
+            .update({
+                status_pengiriman: newStatus.value
+            })
+            .eq('id', order.value.id)
+
+        if (updateError) throw updateError
+
+        // Update local state
+        order.value.status_pengiriman = newStatus.value
+        
+        // Close modal and reset form
+        closeModal()
+        
+        alert('Order status updated successfully!')
+        
+    } catch (err: any) {
+        console.error('Error updating order status:', err)
+        alert('Failed to update order status: ' + err.message)
+    } finally {
+        updatingStatus.value = false
+    }
+}
+
+const closeModal = () => {
+    showUpdateModal.value = false
+    newStatus.value = ''
+    statusNotes.value = ''
+}
+
+const getStatusClass = (status: string) => {
+    const classMap: Record<string, string> = {
+        'diproses': 'status-processing',
+        'dikirim': 'status-shipped',
+        'diterima': 'status-delivered'
+    }
+    return classMap[status] || 'status-processing'
+}
+
 const editOrder = () => {
     // TODO: Implement edit order functionality
     alert('Edit order functionality will be implemented')
@@ -424,6 +552,12 @@ const editOrder = () => {
 
 const goBack = () => {
     router.push('/admin/order-list')
+}
+
+const goToTracking = () => {
+    if (order.value) {
+        router.push(`/admin/order-tracking/${order.value.id}`)
+    }
 }
 
 const getProductImage = (item: DetailTransaksi) => {
@@ -524,5 +658,111 @@ onMounted(async () => {
     .wg-order-detail .right {
         width: 100%;
     }
+
+    .action-buttons-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+}
+
+/* Action Buttons Grid */
+.action-buttons-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 1.5rem 1.5rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 0 1.5rem 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+}
+
+.btn-close:hover {
+    color: #000;
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Status Badge Styles */
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.status-processing {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-shipped {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-delivered {
+    background-color: #d4edda;
+    color: #155724;
 }
 </style>

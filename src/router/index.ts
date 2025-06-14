@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { authGuard } from './guards'
+import { authGuard, transactionSyncGuard } from './guards'
 import HomeView from '@/views/HomeView.vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -18,6 +18,7 @@ import CheckoutView from '@/views/CheckoutView.vue'
 import AdminAddProductView from '@/views/admin/AdminAddProductView.vue'
 import AdminOrderListView from '@/views/admin/AdminOrderListView.vue'
 import AdminOrderDetailView from '@/views/admin/AdminOrderDetailView.vue'
+import AdminOrderTrackingView from '@/views/admin/AdminOrderTrackingView.vue'
 // import AdminAuth from '@/layouts/adminAuth.vue'
 // import AdminLogin from '@/views/admin/AdminLogin.vue'
 
@@ -260,6 +261,18 @@ const router = createRouter({
           }
         },
         {
+          path: 'order-tracking/:id', // Order tracking route
+          name: 'order tracking',
+          component: AdminOrderTrackingView,
+
+          props: true,
+          meta: {
+            title: 'Order Tracking | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
           path: 'tambah-kategori', // Default child route
           name: 'tambah kategori',
           component: AdminAddCategoryView,
@@ -306,5 +319,8 @@ router.beforeEach((to, from, next) => {
 
 // Apply the auth guard to all navigation
 router.beforeEach(authGuard)
+
+// Apply transaction sync guard after navigation
+router.afterEach(transactionSyncGuard)
 
 export default router

@@ -54,10 +54,9 @@
                                         <div>Tambah Alamat Baru</div>
                                     </div>
                                 </div>
-                            </div> 
-
-                            <!-- Delivery Details Section -->
+                            </div>                            <!-- Delivery Section -->
                             <div v-if="deliveryOption === 'delivery'" class="delivery-section">
+                                <!-- Delivery Details Card -->
                                 <div class="delivery-info-card mb_20">
                                     <h6 class="fw-6 mb_15">Delivery Details</h6>
                                     
@@ -91,6 +90,8 @@
                                         </div>
                                     </div>
                                 </div>
+                                
+                                
                             </div>
 
                             <!-- Pickup Section -->
@@ -179,7 +180,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { useCartStore } from '@/stores/cartStore'
 import { supabase } from '@/utils/supabase'
 
-// Define the type for the address object
 interface Alamat {
     id?: number
     user_id?: string
@@ -194,48 +194,56 @@ interface Alamat {
     created_at?: string
 }
 
-// Initialize stores and router
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 const router = useRouter()
 
 const isPlacingOrder = ref(false);
 
-// State for delivery/pickup options
-const deliveryOption = ref('delivery')
+// Delivery/Pickup options
+const deliveryOption = ref('delivery') // 'delivery' or 'pickup'
 const deliveryDate = ref('')
 const deliveryTime = ref('')
 const senderName = ref('')
 const pickupCode = ref('')
 const pickupPhone = ref('')
 const shippingFee = ref(15000)
+
+// Remove individual form fields as we'll use address data directly
+const firstName = ref('')
+const lastName = ref('')
+const country = ref('Indonesia')
+const city = ref('')
+const streetAddress = ref('')
+const phone = ref('')
+const email = ref('')
+const postalCode = ref('')
 const orderNote = ref('')
 
-// State for address management
 const userAddresses = ref<Alamat[]>([])
 const defaultAddress = ref<Alamat | null>(null)
 const isLoadingAddress = ref(false)
 const addressError = ref<string | null>(null)
 const selectedAddressId = ref<number | null>(null);
 
-// Computed properties for cart and totals
 const cartItems = computed(() => cartStore.cartItems)
 const cartTotalPrice = computed(() => cartStore.totalPrice)
 const totalPrice = computed(() => {
-    return deliveryOption.value === 'delivery'
-        ? cartTotalPrice.value + shippingFee.value
-        : cartTotalPrice.value;
+    if (deliveryOption.value === 'delivery') {
+        return cartTotalPrice.value + shippingFee.value
+    }
+    return cartTotalPrice.value
 })
 
 const isValidOrder = computed(() => {
     if (deliveryOption.value === 'delivery') {
-        return selectedAddressId.value !== null && deliveryDate.value && deliveryTime.value;
+        return selectedAddressId.value !== null && deliveryDate.value && deliveryTime.value
+    } else {
+        return pickupPhone.value
     }
-    return !!pickupPhone.value;
 })
 
-// --- Methods ---
-
+// Generate random pickup code when pickup option is selected
 const generatePickupCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
     let result = ''
@@ -248,21 +256,49 @@ const generatePickupCode = () => {
 const setDeliveryOption = (option: 'delivery' | 'pickup') => {
     deliveryOption.value = option
     if (option === 'pickup') {
-        pickupCode.value = generatePickupCode();
-        selectedAddressId.value = null;
-        deliveryDate.value = '';
-        deliveryTime.value = '';
+        pickupCode.value = generatePickupCode()
+        selectedAddressId.value = null
+        // Reset delivery fields
+        deliveryDate.value = ''
+        deliveryTime.value = ''
     } else {
-        pickupCode.value = '';
-        pickupPhone.value = '';
+        // Reset pickup fields
+        pickupCode.value = ''
+        pickupPhone.value = ''
+        // Auto-select default address if available
         if (defaultAddress.value) {
-            selectAddress(defaultAddress.value);
+            selectAddress(defaultAddress.value)
         }
     }
 }
 
+const updateFormWithAddress = (address: Alamat | null) => {
+    if (address) {
+        const nameParts = (address.nama_penerima || '').split(' ');
+        firstName.value = nameParts[0] || '';
+        lastName.value = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        phone.value = address.no_telp_penerima || '';
+        streetAddress.value = address.alamat_lengkap || '';
+        city.value = address.kota || '';
+        postalCode.value = address.kode_pos || '';
+    } else {
+        if (authStore.userProfile) {
+            firstName.value = authStore.userProfile.first_name || '';
+            lastName.value = authStore.userProfile.last_name || '';
+        } else {
+            firstName.value = '';
+            lastName.value = '';
+        }
+        phone.value = '';
+        streetAddress.value = '';
+        city.value = '';
+        postalCode.value = '';
+    }
+};
+
 const selectAddress = (address: Alamat) => {
     selectedAddressId.value = address.id ?? null;
+    updateFormWithAddress(address);
 };
 
 const navigateToAddNewAddress = () => {
@@ -294,50 +330,60 @@ const fetchAddresses = async () => {
             if (selectedAddressId.value === null) {
                 selectAddress(foundDefaultAddress);
             }
+        } else {
+            updateFormWithAddress(null);
         }
     } catch (err: any) {
         console.error('Error fetching addresses:', err)
         addressError.value = err.message || 'Failed to fetch addresses.'
         userAddresses.value = [];
+        updateFormWithAddress(null);
     } finally {
         isLoadingAddress.value = false
     }
 }
 
-// --- Watchers ---
-
 watch(() => authStore.userProfile, (profile) => {
+    if (profile && selectedAddressId.value === null) {
+        firstName.value = profile.first_name || ''
+        lastName.value = profile.last_name || ''
+    }
+    // Update sender name for delivery
     if (profile) {
         senderName.value = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || authStore.user?.email?.split('@')[0] || 'Customer'
     }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
-watch(() => authStore.user, (currentUser) => {
+watch(() => authStore.user, (currentUser, prevUser) => {
     if (currentUser) {
+        email.value = currentUser.email || ''
+        // Set default sender name if no profile
         if (!authStore.userProfile) {
             senderName.value = currentUser.email?.split('@')[0] || 'Customer'
         }
-        if (userAddresses.value.length === 0) {
+        if (currentUser.id !== prevUser?.id || userAddresses.value.length === 0) {
             fetchAddresses()
         }
     } else {
-        senderName.value = '';
-        userAddresses.value = [];
-        defaultAddress.value = null;
+        firstName.value = ''
+        lastName.value = ''
+        email.value = ''
+        senderName.value = ''
+        updateFormWithAddress(null);
+        userAddresses.value = []
+        defaultAddress.value = null
         selectedAddressId.value = null;
     }
-}, { immediate: true })
-
-// --- Lifecycle Hooks ---
+}, { immediate: true, deep: true })
 
 onMounted(async () => {
     if (!authStore.isLoggedIn && !authStore.loading) {
       await authStore.initialize();
+    } else if (authStore.isLoggedIn && userAddresses.value.length === 0) {
+      await fetchAddresses();
     }
     await cartStore.fetchCartItems();
 })
-
-// --- Formatting and Utility Methods ---
 
 const formatPrice = (price: number) => {
     if (price === null || price === undefined) return 'IDR 0'
@@ -349,17 +395,17 @@ const formatPrice = (price: number) => {
 }
 
 const getProductImage = (item: any) => {
-    return (item.produk?.image_urls?.[0]) || '/user/images/products/placeholder.jpg';
+    if (item.produk && item.produk.image_urls && item.produk.image_urls.length > 0) {
+        return item.produk.image_urls[0];
+    }
+    return '/user/images/products/placeholder.jpg';
 }
 
 const handleImageError = (event: Event) => {
     (event.target as HTMLImageElement).src = '/user/images/products/placeholder.jpg';
 }
 
-// --- Main Checkout Logic ---
-
 const placeOrder = async () => {
-    // Validation checks
     if (deliveryOption.value === 'delivery' && (!selectedAddressId.value || !deliveryDate.value || !deliveryTime.value)) {
         alert('Silakan lengkapi informasi pengiriman.');
         return;
@@ -375,7 +421,6 @@ const placeOrder = async () => {
 
     isPlacingOrder.value = true;
 
-    // Prepare request body for Edge Function
     const requestBody: any = {
         cart_items: cartItems.value.map(item => ({
             produk_id: item.produk.id,
@@ -386,6 +431,7 @@ const placeOrder = async () => {
 
     if (deliveryOption.value === 'delivery') {
         requestBody.address_id = selectedAddressId.value;
+        // Combine delivery date and time
         const deliveryDateTime = new Date(`${deliveryDate.value}T${deliveryTime.value}:00`);
         requestBody.delivery_datetime = deliveryDateTime.toISOString();
         requestBody.sender_name = senderName.value;
@@ -395,56 +441,30 @@ const placeOrder = async () => {
     }
 
     try {
-        // Invoke 'create-transaction' to get Midtrans token
         const { data, error } = await supabase.functions.invoke('create-transaction', {
             body: requestBody
         });
 
         if (error) throw new Error(error.message);
 
-        // Pay with Midtrans Snap
-        const token = data.token;
-        window.snap.pay(token, {
-            onSuccess: async function(result) {
-                console.log('Pembayaran sukses dari sisi frontend:', result);
-                alert('Pembayaran berhasil! Kami sedang mengupdate status pesanan Anda...');
-
-                // **WORKAROUND LOGIC STARTS HERE**
-                // Proactively sync status instead of relying on webhook
-                try {
-                    console.log(`Memulai sinkronisasi untuk order_id: ${result.order_id}`);
-                    const { error: syncError } = await supabase.functions.invoke('sync-transaction-status', {
-                        body: { order_id: result.order_id }
-                    });
-
-                    if (syncError) {
-                        console.error('Gagal melakukan sinkronisasi status di latar belakang:', syncError);
-                        alert('Terjadi sedikit kendala saat update status otomatis, tapi pembayaran Anda sudah tercatat. Silakan cek halaman pesanan Anda nanti.');
-                    } else {
-                        console.log('Sinkronisasi status berhasil.');
-                    }
-
-                } catch (e) {
-                    console.error('Error saat memanggil fungsi sync:', e);
-                }
-                // **WORKAROUND LOGIC ENDS HERE**
-
-                // Continue with the rest of the flow
+        const token = data.token;        window.snap.pay(token, {
+            onSuccess: function(result){
+                console.log('success', result);
+                alert('Pembayaran sukses!');
                 cartStore.clearCart();
-                setTimeout(() => {
-                    router.push({ path: '/akun-saya', query: { tab: 'orders' } });
-                }, 1000);
+                // router.push({ path: '/akun-saya', query: { tab: 'orders' } });
             },
-            onPending: function(result) {
+            onPending: function(result){
                 console.log('pending', result);
                 alert('Pembayaran Anda sedang diproses. Silakan selesaikan pembayaran.');
+                // router.push({ path: '/akun-saya', query: { tab: 'orders' } });
             },
-            onError: function(result) {
+            onError: function(result){
                 console.log('error', result);
                 alert('Pembayaran Gagal!');
                 isPlacingOrder.value = false;
             },
-            onClose: function() {
+            onClose: function(){
                 console.log('Popup ditutup tanpa menyelesaikan pembayaran');
                 isPlacingOrder.value = false;
             }
@@ -456,7 +476,6 @@ const placeOrder = async () => {
     }
 };
 </script>
-
 
 <style scoped>
 .form-checkout .fieldset input,
