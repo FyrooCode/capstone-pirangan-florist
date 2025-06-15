@@ -42,15 +42,32 @@
                 <!-- card product -->
                 <div v-if="isLoading" class="loading-message">Loading products...</div>
                 <div v-else-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-                <div v-else-if="filteredProducts.length === 0" class="empty-message">No products found.</div>
-                <div v-else v-for="product in filteredProducts" :key="product.id" class="card-product list-layout"
+                <div v-else-if="paginatedProducts.length === 0" class="empty-message">No products found.</div>
+                <div v-else v-for="product in paginatedProducts" :key="product.id" class="card-product list-layout"
                     :data-availability="product.stok > 0 ? 'In stock' : 'Out of stock'" data-brand="Ecomus">
                     <div class="card-product-wrapper">
                         <router-link :to="{ name: 'ProductDetail', params: { id: product.id } }" class="product-img">
-                            <img v-if="product.image_urls && product.image_urls.length > 0" class="lazyload img-product"
-                                :data-src="product.image_urls[0]" :src="product.image_urls[0]" alt="image-product"
-                                style="transition: none !important; transform: none !important;">
-                            <!-- Add a placeholder image if no image is available -->
+                            <div v-if="product.image_urls && product.image_urls.length > 0" class="image-wrapper">
+                                <!-- Loading placeholder -->
+                                <div v-if="isImageLoading(product.image_urls[0])" class="image-loading">
+                                    <div class="spinner"></div>
+                                </div>
+                                
+                                <!-- Optimized image with lazy loading -->
+                                <img 
+                                    :data-src="getOptimizedImageUrl(product.image_urls[0])" 
+                                    :src="getOptimizedImageUrl(product.image_urls[0])" 
+                                    :alt="product.nama_produk"
+                                    class="lazyload img-product"
+                                    loading="lazy"
+                                    @load="handleImageLoad(product.image_urls[0])"
+                                    @error="handleImageError(product.image_urls[0], $event)"
+                                    style="transition: none !important; transform: none !important;">
+                            </div>
+                            <div v-else class="image-placeholder">
+                                <i class="icon-image"></i>
+                                <span>No Image</span>
+                            </div>
                         </router-link>
                     </div>
                     <div class="card-product-info">
@@ -86,15 +103,32 @@
                 <!-- card product -->
                 <div v-if="isLoading" class="loading-message">Loading products...</div>
                 <div v-else-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-                <div v-else-if="filteredProducts.length === 0" class="empty-message">No products found.</div>
-                <div v-else v-for="product in filteredProducts" :key="product.id" class="card-product"
+                <div v-else-if="paginatedProducts.length === 0" class="empty-message">No products found.</div>
+                <div v-else v-for="product in paginatedProducts" :key="product.id" class="card-product"
                     :data-availability="product.stok > 0 ? 'In stock' : 'Out of stock'" data-brand="Ecomus">
                     <div class="card-product-wrapper">
                         <router-link :to="{ name: 'ProductDetail', params: { id: product.id } }" class="product-img">
-                            <img v-if="product.image_urls && product.image_urls.length > 0" class="lazyload img-product"
-                                :data-src="product.image_urls[0]" :src="product.image_urls[0]" alt="image-product"
-                                style="transition: none !important; transform: none !important;">
-                            <!-- Add a placeholder image if no image is available -->
+                            <div v-if="product.image_urls && product.image_urls.length > 0" class="image-wrapper">
+                                <!-- Loading placeholder -->
+                                <div v-if="isImageLoading(product.image_urls[0])" class="image-loading">
+                                    <div class="spinner"></div>
+                                </div>
+                                
+                                <!-- Optimized image with lazy loading -->
+                                <img 
+                                    :data-src="getOptimizedImageUrl(product.image_urls[0])" 
+                                    :src="getOptimizedImageUrl(product.image_urls[0])" 
+                                    :alt="product.nama_produk"
+                                    class="lazyload img-product"
+                                    loading="lazy"
+                                    @load="handleImageLoad(product.image_urls[0])"
+                                    @error="handleImageError(product.image_urls[0], $event)"
+                                    style="transition: none !important; transform: none !important;">
+                            </div>
+                            <div v-else class="image-placeholder">
+                                <i class="icon-image"></i>
+                                <span>No Image</span>
+                            </div>
                         </router-link>
                         <div class="list-product-btn">
                             <a href="#" @click.prevent="addToCart(product)"
@@ -127,22 +161,53 @@
             </div>
 
             <!-- pagination -->
-            <ul class="wg-pagination tf-pagination-list justify-content-center">
-                <li class="active">
-                    <a href="#" class="pagination-link">1</a>
-                </li>
-                <li>
-                    <a href="#" class="pagination-link animate-hover-btn">2</a>
-                </li>
-                <li>
-                    <a href="#" class="pagination-link animate-hover-btn">3</a>
-                </li>
-                <li>
-                    <a href="#" class="pagination-link animate-hover-btn">
-                        <i class="icon icon-arrow-right"></i>
-                    </a>
-                </li>
-            </ul>
+            <nav aria-label="Product pagination" v-if="totalPages > 1" class="mt-4">
+                <ul class="wg-pagination tf-pagination-list justify-content-center">
+                    <!-- First page -->
+                    <li v-if="currentPage > 1">
+                        <a href="#" @click.prevent="goToFirstPage" class="pagination-link animate-hover-btn" aria-label="First page">
+                            <i class="icon icon-arrow-left"></i><i class="icon icon-arrow-left"></i>
+                        </a>
+                    </li>
+                    
+                    <!-- Previous page -->
+                    <li v-if="currentPage > 1">
+                        <a href="#" @click.prevent="goToPreviousPage" class="pagination-link animate-hover-btn" aria-label="Previous page">
+                            <i class="icon icon-arrow-left"></i>
+                        </a>
+                    </li>
+                    
+                    <!-- Page numbers -->
+                    <li v-for="page in visiblePages" :key="page" :class="{ active: page === currentPage }">
+                        <a href="#" @click.prevent="changePage(page)" class="pagination-link" :class="{ 'animate-hover-btn': page !== currentPage }">
+                            {{ page }}
+                        </a>
+                    </li>
+                    
+                    <!-- Next page -->
+                    <li v-if="currentPage < totalPages">
+                        <a href="#" @click.prevent="goToNextPage" class="pagination-link animate-hover-btn" aria-label="Next page">
+                            <i class="icon icon-arrow-right"></i>
+                        </a>
+                    </li>
+                    
+                    <!-- Last page -->
+                    <li v-if="currentPage < totalPages">
+                        <a href="#" @click.prevent="goToLastPage" class="pagination-link animate-hover-btn" aria-label="Last page">
+                            <i class="icon icon-arrow-right"></i><i class="icon icon-arrow-right"></i>
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- Pagination info -->
+                <div class="pagination-info text-center mt-3">
+                    <span class="text-muted">
+                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to 
+                        {{ Math.min(currentPage * itemsPerPage, totalProducts) }} of 
+                        {{ totalProducts }} products
+                    </span>
+                </div>
+            </nav>
 
 
 
@@ -284,6 +349,11 @@ const errorMessage = ref('');
 const selectedProductForQuickAdd = ref<any | null>(null);
 const selectedProductForQuickView = ref<any | null>(null);
 
+// Pagination state
+const currentPage = ref(1);
+const itemsPerPage = ref(12);
+const totalProducts = ref(0);
+
 // Filter states
 const availabilityFilter = ref<string | null>(null);
 const priceRange = ref({ min: 0, max: 1000000 });
@@ -292,7 +362,15 @@ const priceRange = ref({ min: 0, max: 1000000 });
 const sortBy = ref<string>('created_at');
 const sortOrder = ref<string>('asc'); // 'asc' for oldest first, 'desc' for newest first
 
-// Computed property for filtered products by category
+// Image optimization
+const imageLoadingStates = ref<{ [key: string]: boolean }>({});
+const imageErrorStates = ref<{ [key: string]: boolean }>({});
+
+// Professional performance optimizations
+const debounceTimer = ref<NodeJS.Timeout | null>(null);
+const isRefreshing = ref(false);
+
+// Computed property for filtered products with pagination
 const filteredProducts = computed(() => {
     let result = selectedCategoryId.value === null 
         ? products.value 
@@ -346,16 +424,62 @@ const filteredProducts = computed(() => {
         }
     });
 
+    // Update total count
+    totalProducts.value = result.length;
+
     return result;
 });
 
-// Fetch products from Supabase
-const fetchProducts = async () => {
+// Computed property for paginated products
+const paginatedProducts = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return filteredProducts.value.slice(start, end);
+});
+
+// Computed property for pagination info
+const totalPages = computed(() => Math.ceil(totalProducts.value / itemsPerPage.value));
+
+// Computed property for visible page numbers
+const visiblePages = computed(() => {
+    const pages = [];
+    const total = totalPages.value;
+    const current = currentPage.value;
+    const maxVisible = 5;
+    
+    if (total <= maxVisible) {
+        for (let i = 1; i <= total; i++) {
+            pages.push(i);
+        }
+    } else {
+        let start = Math.max(1, current - Math.floor(maxVisible / 2));
+        let end = Math.min(total, start + maxVisible - 1);
+        
+        // Adjust start if we're near the end
+        if (end - start < maxVisible - 1) {
+            start = Math.max(1, end - maxVisible + 1);
+        }
+        
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+    }
+    
+    return pages;
+});
+
+// Optimized fetch products with pagination support
+const fetchProducts = async (page = 1, limit = 50) => {
+    if (isLoading.value && !isRefreshing.value) return;
+    
     isLoading.value = true;
     errorMessage.value = '';
 
     try {
-        const { data, error } = await supabase
+        // Calculate offset for pagination
+        const offset = (page - 1) * limit;
+
+        const { data, error, count } = await supabase
             .from('produk')
             .select(`
                 id,
@@ -369,12 +493,19 @@ const fetchProducts = async () => {
                     id,
                     nama_kategori
                 )
-            `)
-            .order('created_at', { ascending: true }); // Changed to true for oldest first
+            `, { count: 'exact' })
+            .order('created_at', { ascending: true })
+            .range(offset, offset + limit - 1);
 
         if (error) throw error;
 
-        products.value = data || [];
+        if (page === 1) {
+            products.value = data || [];
+        } else {
+            products.value = [...products.value, ...(data || [])];
+        }
+        
+        totalProducts.value = count || 0;
         
         // Update price range based on actual product data
         if (products.value.length > 0) {
@@ -383,11 +514,16 @@ const fetchProducts = async () => {
             const maxPrice = Math.max(...prices);
             priceRange.value = { min: minPrice, max: maxPrice };
         }
+
+        // Preload images for better UX
+        preloadImages(data || []);
+        
     } catch (error: any) {
         errorMessage.value = `Error fetching products: ${error.message}`;
         console.error('Error fetching products:', error);
     } finally {
         isLoading.value = false;
+        isRefreshing.value = false;
     }
 };
 
@@ -431,6 +567,114 @@ const fetchCategories = async () => {
     }
 };
 
+// Professional image handling functions
+const preloadImages = (productList: any[]) => {
+    productList.forEach(product => {
+        if (product.image_urls && product.image_urls.length > 0) {
+            product.image_urls.forEach((url: string) => {
+                const img = new Image();
+                img.onload = () => {
+                    imageLoadingStates.value[url] = false;
+                };
+                img.onerror = () => {
+                    imageErrorStates.value[url] = true;
+                    imageLoadingStates.value[url] = false;
+                };
+                imageLoadingStates.value[url] = true;
+                img.src = url;
+            });
+        }
+    });
+};
+
+const getOptimizedImageUrl = (url: string, width = 400, height = 400, quality = 80) => {
+    if (!url) return '/user/images/products/placeholder.jpg';
+    
+    // For Supabase storage, we can add transformation parameters
+    if (url.includes('supabase')) {
+        return `${url}?width=${width}&height=${height}&quality=${quality}&format=webp`;
+    }
+    
+    return url;
+};
+
+const handleImageLoad = (url: string) => {
+    imageLoadingStates.value[url] = false;
+};
+
+const handleImageError = (url: string, event: Event) => {
+    imageErrorStates.value[url] = true;
+    imageLoadingStates.value[url] = false;
+    (event.target as HTMLImageElement).src = '/user/images/products/placeholder.jpg';
+};
+
+const isImageLoading = (url: string) => {
+    return imageLoadingStates.value[url] || false;
+};
+
+const hasImageError = (url: string) => {
+    return imageErrorStates.value[url] || false;
+};
+
+// Pagination functions
+const changePage = (page: number) => {
+    if (page < 1 || page > totalPages.value || page === currentPage.value) return;
+    
+    currentPage.value = page;
+    
+    // Scroll to top of products section
+    const element = document.getElementById('gridLayout') || document.getElementById('listLayout');
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
+
+const goToFirstPage = () => changePage(1);
+const goToLastPage = () => changePage(totalPages.value);
+const goToPreviousPage = () => changePage(currentPage.value - 1);
+const goToNextPage = () => changePage(currentPage.value + 1);
+
+// Debounced refresh function for performance
+const debouncedRefresh = () => {
+    if (debounceTimer.value) {
+        clearTimeout(debounceTimer.value);
+    }
+    
+    debounceTimer.value = setTimeout(() => {
+        currentPage.value = 1;
+        isRefreshing.value = true;
+        fetchProducts();
+    }, 300);
+};
+
+// Professional lazy loading implementation
+const setupLazyLoading = () => {
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target as HTMLImageElement;
+                    const src = img.dataset.src;
+                    
+                    if (src) {
+                        img.src = src;
+                        img.classList.remove('lazy');
+                        imageObserver.unobserve(img);
+                    }
+                }
+            });
+        }, {
+            rootMargin: '50px 0px',
+            threshold: 0.1
+        });
+
+        // Observe all lazy images
+        document.querySelectorAll('img[data-src]').forEach(img => {
+            imageObserver.observe(img);
+        });
+    }
+};
+
 // Utility function to format price
 const formatPrice = (price: number) => {
     if (price === null || price === undefined) return 'N/A';
@@ -442,22 +686,31 @@ const formatPrice = (price: number) => {
     }).format(price);
 };
 
-// Category selection
-const selectCategory = (categoryId: number | null) => {
-    selectedCategoryId.value = categoryId;
+// Reset pagination when filters change
+const resetPagination = () => {
+    currentPage.value = 1;
 };
 
 // Filter handlers
 const handleCategoryChange = (categoryId: number | null) => {
     selectedCategoryId.value = categoryId;
+    resetPagination();
 };
 
 const handleAvailabilityChange = (filter: string | null) => {
     availabilityFilter.value = filter;
+    resetPagination();
 };
 
 const handlePriceRangeChange = (range: { min: number, max: number }) => {
     priceRange.value = range;
+    resetPagination();
+};
+
+// Category selection
+const selectCategory = (categoryId: number | null) => {
+    selectedCategoryId.value = categoryId;
+    resetPagination();
 };
 
 // Sorting functions
@@ -489,6 +742,7 @@ const applySorting = (sortValue: string) => {
             sortOrder.value = 'asc';
             break;
     }
+    resetPagination();
 };
 
 // Product actions
@@ -655,5 +909,205 @@ function setGridLayout(layoutClass: string) {
 .card-product .img-product,
 .card-product .img-product:hover {
     animation: none !important;
+}
+
+/* Professional image loading and error handling */
+.image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.image-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    z-index: 1;
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #e9ecef;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 200px;
+    background: #f8f9fa;
+    color: #6c757d;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+}
+
+.image-placeholder i {
+    font-size: 48px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.image-placeholder span {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Lazy loading styles */
+.lazyload {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.lazyload.loaded {
+    opacity: 1;
+}
+
+/* Professional pagination styles */
+.pagination-info {
+    color: #6c757d;
+    font-size: 14px;
+    margin-top: 16px;
+}
+
+.wg-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin: 24px 0;
+    flex-wrap: wrap;
+}
+
+.wg-pagination li {
+    list-style: none;
+}
+
+.pagination-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    color: #495057;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.pagination-link:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+    color: #495057;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.wg-pagination li.active .pagination-link {
+    background: #000000;
+    border-color: #000000;
+    color: white;
+}
+
+.wg-pagination li.active .pagination-link:hover {
+    background: #000000;
+    border-color: #000000;
+    transform: none;
+}
+
+/* Loading and error states */
+.loading-message,
+.error-message,
+.empty-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+    font-size: 16px;
+    grid-column: 1 / -1; /* Span all columns in grid */
+}
+
+.error-message {
+    color: #dc3545;
+}
+
+.loading-message {
+    position: relative;
+}
+
+.loading-message::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    border: 2px solid #e9ecef;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+    .pagination-info {
+        font-size: 12px;
+    }
+    
+    .pagination-link {
+        min-width: 36px;
+        height: 36px;
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+    
+    .wg-pagination {
+        gap: 4px;
+        margin: 16px 0;
+    }
+}
+
+/* Performance optimizations */
+.img-product {
+    will-change: auto;
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Image optimization for different screen sizes */
+@media (max-width: 576px) {
+    .image-placeholder {
+        height: 150px;
+    }
+    
+    .image-placeholder i {
+        font-size: 32px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .image-placeholder {
+        height: 250px;
+    }
 }
 </style>

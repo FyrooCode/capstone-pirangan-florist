@@ -18,11 +18,12 @@
 
         <Footer></Footer>
         <MobileMenu></MobileMenu>
+        
+        <!-- Floating Chat Button -->
+        <FloatingChatButton></FloatingChatButton>
     </div>
 
     <toolbarBottom></toolbarBottom>
-
-    <Filter></Filter>
 
     <CanvasSearch></CanvasSearch>
 
@@ -44,15 +45,15 @@ import { useRoute } from 'vue-router';
 import PageTitleComponent from '@/components/product/katalog/pageTitle.vue';
 import Navbar from '@/components/navbar.vue';
 import ShopFilter from '@/components/product/katalog/shopFilter.vue';
-import Footer from '@/components/product/katalog/footer.vue';
+import Footer from '@/components/footer.vue';
 import toolbarBottom from '@/components/product/katalog/toolbarBottom.vue';
 import gotop from '@/components/product/katalog/gotop.vue';
 import MobileMenu from '@/components/mobileMenu.vue';
-import Filter from '@/components/product/katalog/filter.vue';
 import CanvasSearch from '@/components/product/katalog/canvasSearch.vue';
 import ToolbarShopmb from '@/components/product/katalog/toolbarShopmb.vue';
 import ProductModal from '@/components/product/katalog/productModal.vue';
 import ShoppingCart from '@/components/product/katalog/shoppingCart.vue';
+import FloatingChatButton from '@/components/FloatingChatButton.vue';
 
 const route = useRoute();
 

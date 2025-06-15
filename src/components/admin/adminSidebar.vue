@@ -81,6 +81,12 @@ export default {
             // { title: 'Tambah Kategori', route: 'tambah kategori' },
           ],
         },
+        {
+          title: 'Chat Management',
+          link: 'javascript:void(0);',
+          icon: '<i class="icon-message-circle"></i>',
+          routeName: 'chat management',
+        },
       ],
     };
   },

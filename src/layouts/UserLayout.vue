@@ -6,6 +6,9 @@
 
     <Footer></Footer>
     <MobileMenu></MobileMenu>
+    
+    <!-- Floating Chat Button -->
+    <FloatingChatButton></FloatingChatButton>
   </div>
 </template>
 
@@ -15,6 +18,7 @@ import { useRoute } from 'vue-router'
 import Navbar from '@/components/navbar.vue'
 import Footer from '@/components/footer.vue'
 import MobileMenu from '@/components/mobileMenu.vue'
+import FloatingChatButton from '@/components/FloatingChatButton.vue'
 
 // Initialize template functionality when component is mounted
 onMounted(async () => {

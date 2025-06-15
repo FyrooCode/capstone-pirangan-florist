@@ -282,6 +282,27 @@ const router = createRouter({
             requiresAdmin: true
           }
         },
+        {
+          path: 'chat-management',
+          name: 'chat management',
+          component: () => import('@/views/admin/AdminChatManagementView.vue'),
+          meta: {
+            title: 'Chat Management | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'chat-conversation/:id',
+          name: 'chat conversation',
+          component: () => import('@/views/admin/AdminChatConversationView.vue'),
+          props: true,
+          meta: {
+            title: 'Chat Conversation | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
       ],
     },
 
