@@ -80,9 +80,9 @@
                 <li class="menu-item">
                   <router-link to="/katalog" class="item-link text_green-1">Katalog</router-link>
                 </li>
-                <li class="menu-item">
+                <!-- <li class="menu-item">
                   <router-link to="/cara-order" class="item-link text_green-1">Cara Order</router-link>
-                </li>
+                </li> -->
                 <li class="menu-item">
                   <router-link to="/hubungi-kami" class="item-link text_green-1">Hubungi Kami</router-link>
                 </li>
