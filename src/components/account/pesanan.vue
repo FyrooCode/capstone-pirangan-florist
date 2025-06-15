@@ -15,6 +15,7 @@
                     <tr>
                         <th class="fw-6">Order ID</th>
                         <th class="fw-6">Tanggal</th>
+                        <th class="fw-6">Tipe</th>
                         <th class="fw-6">Status Pembayaran</th>
                         <th class="fw-6">Status Pengiriman</th>
                         <th class="fw-6">Total</th>
@@ -26,13 +27,18 @@
                         <td>{{ order.order_id }}</td>
                         <td>{{ formatDate(order.tanggal_transaksi) }}</td>
                         <td>
+                            <span class="order-type-badge" :class="getOrderTypeClass(order.opsi_pengiriman)">
+                                {{ getOrderTypeText(order.opsi_pengiriman) }}
+                            </span>
+                        </td>
+                        <td>
                             <span class="status-badge" :class="getPaymentStatusClass(order.status_pembayaran)">
                                 {{ getPaymentStatusText(order.status_pembayaran) }}
                             </span>
                         </td>
                         <td>
                             <span class="status-badge" :class="getShippingStatusClass(order.status_pengiriman)">
-                                {{ getShippingStatusText(order.status_pengiriman) }}
+                                {{ getShippingStatusText(order.status_pengiriman, order.opsi_pengiriman) }}
                             </span>
                         </td>
                         <td>{{ formatCurrency(order.total_final) }}</td>
@@ -49,7 +55,7 @@
                                     @click="refreshStatus(order.order_id)" :disabled="refreshingStatusId === order.order_id"
                                     class="tf-btn btn-info animate-hover-btn rounded-0 btn-sm ml-2">
                                     <span v-if="refreshingStatusId === order.order_id">Menyegarkan...</span>
-                                    <span v-else>Refresh Status</span>
+                                    <span v-else">Refresh Status</span>
                                 </button>
 
                                 <!-- Tombol Bayar Ulang -->
@@ -201,10 +207,46 @@ const retryPayment = async (orderId: string) => {
 // Helper Functions (Formatting, etc.)
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const formatCurrency = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+
 const getPaymentStatusText = (status: string) => ({ 'pending': 'Menunggu Pembayaran', 'paid': 'Sudah Dibayar', 'dibayar': 'Sudah Dibayar', 'failed': 'Gagal', 'gagal': 'Gagal' }[status] || status);
-const getShippingStatusText = (status: string) => ({ 'diproses': 'Diproses', 'dikirim': 'Dikirim', 'diterima': 'Diterima', 'dibatalkan': 'Dibatalkan'}[status] || status);
+
+// Order type functions
+const getOrderTypeText = (type: string) => ({ 'pickup': 'Pickup', 'delivery': 'Delivery' }[type] || type);
+const getOrderTypeClass = (type: string) => ({ 'pickup': 'order-type-pickup', 'delivery': 'order-type-delivery' }[type] || 'order-type-default');
+// Dynamic shipping status text based on order type
+const getShippingStatusText = (status: string, opsi_pengiriman?: string) => {
+    const statusMap: Record<string, Record<string, string>> = {
+        pickup: {
+            'diproses': 'Diproses',
+            'siap_pickup': 'Siap Diambil',
+            'diterima': 'Sudah Diambil',
+            'dibatalkan': 'Dibatalkan',
+            'dikembalikan': 'Dikembalikan'
+        },
+        delivery: {
+            'diproses': 'Diproses',
+            'dikirim': 'Dikirim',
+            'diterima': 'Diterima',
+            'dibatalkan': 'Dibatalkan',
+            'dikembalikan': 'Dikembalikan'
+        }
+    };
+    
+    const typeMap = statusMap[opsi_pengiriman || 'delivery'];
+    return typeMap?.[status] || status;
+};
+
 const getPaymentStatusClass = (status: string) => ({ 'pending': 'status-pending', 'paid': 'status-success', 'dibayar': 'status-success', 'failed': 'status-failed', 'gagal': 'status-failed' }[status] || 'status-default');
-const getShippingStatusClass = (status: string) => ({ 'diproses': 'status-processing', 'dikirim': 'status-shipped', 'diterima': 'status-delivered', 'dibatalkan': 'status-cancelled', 'dikembalikan': 'status-returned' }[status] || 'status-default');
+
+// Dynamic shipping status class
+const getShippingStatusClass = (status: string) => ({ 
+    'diproses': 'status-processing', 
+    'dikirim': 'status-shipped', 
+    'siap_pickup': 'status-ready',
+    'diterima': 'status-delivered', 
+    'dibatalkan': 'status-cancelled', 
+    'dikembalikan': 'status-returned' 
+}[status] || 'status-default');
 const viewOrder = (orderId: string) => emit('viewOrder', orderId);
 
 // Deklarasi global untuk TypeScript
@@ -246,13 +288,26 @@ onMounted(async () => {
 .mt-3 { margin-top: 1rem; }
 .ml-2 { margin-left: 0.5rem; }
 .action-buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Status badges */
 .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
+
+/* Order type badges */
+.order-type-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
+.order-type-pickup { background-color: #d1ecf1; color: #0c5460; }
+.order-type-delivery { background-color: #fff3cd; color: #856404; }
+.order-type-default { background-color: #e9ecef; color: #495057; }
+
+/* Payment status */
 .status-pending { background-color: #fff3cd; color: #856404; }
 .status-success { background-color: #d4edda; color: #155724; }
 .status-failed, .status-expired, .status-cancelled { background-color: #f8d7da; color: #721c24; }
 .status-refunded { background-color: #cce5ff; color: #004085; }
+
+/* Shipping status */
 .status-processing { background-color: #e2e3e5; color: #383d41; }
 .status-shipped { background-color: #bee5eb; color: #0c5460; }
+.status-ready { background-color: #d4f4dd; color: #0f5132; }
 .status-delivered { background-color: #d4edda; color: #155724; }
 .status-returned { background-color: #e2e3e5; color: #383d41; }
 .status-default { background-color: #e9ecef; color: #495057; }

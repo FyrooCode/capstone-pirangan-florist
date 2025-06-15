@@ -107,14 +107,25 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Status Progress -->
+                    </div>                    <!-- Status Progress -->
                     <div class="wg-box mb-20">
                         <div>
-                            <h6 class="mb-10">Delivery Progress</h6>
+                            <h6 class="mb-10">
+                                {{ order.opsi_pengiriman === 'pickup' ? 'Pickup Progress' : 'Delivery Progress' }}
+                            </h6>
                             <div class="body-text mb-20">
                                 Current Status: <strong>{{ formatShippingStatus(order.status_pengiriman) }}</strong>
+                            </div>
+                            <div v-if="order.opsi_pengiriman === 'pickup' && order.pickup_datetime" class="pickup-info mb-20">
+                                <div class="body-text">
+                                    <strong>Pickup Schedule:</strong> {{ formatDate(order.pickup_datetime) }}
+                                </div>
+                                <div v-if="order.pickup_kode" class="body-text">
+                                    <strong>Pickup Code:</strong> {{ order.pickup_kode }}
+                                </div>
+                                <div v-if="order.pickup_no_telp" class="body-text">
+                                    <strong>Pickup Contact:</strong> {{ order.pickup_no_telp }}
+                                </div>
                             </div>
                         </div>
                         <div class="road-map">
@@ -123,14 +134,19 @@
                                 <h6>Order Processing</h6>
                                 <div class="body-text">{{ getStatusTime('diproses') }}</div>
                             </div>
-                            <div :class="['road-map-item', { active: isStatusActive('dikirim') }]">
+                            <div v-if="order.opsi_pengiriman === 'delivery'" :class="['road-map-item', { active: isStatusActive('dikirim') }]">
                                 <div class="icon"><i class="icon-check"></i></div>
                                 <h6>Order Shipped</h6>
                                 <div class="body-text">{{ getStatusTime('dikirim') }}</div>
                             </div>
+                            <div v-if="order.opsi_pengiriman === 'pickup'" :class="['road-map-item', { active: isStatusActive('siap_pickup') }]">
+                                <div class="icon"><i class="icon-check"></i></div>
+                                <h6>Ready for Pickup</h6>
+                                <div class="body-text">{{ getStatusTime('siap_pickup') }}</div>
+                            </div>
                             <div :class="['road-map-item', { active: isStatusActive('diterima') }]">
                                 <div class="icon"><i class="icon-check"></i></div>
-                                <h6>Order Delivered</h6>
+                                <h6>{{ order.opsi_pengiriman === 'pickup' ? 'Order Picked Up' : 'Order Delivered' }}</h6>
                                 <div class="body-text">{{ getStatusTime('diterima') }}</div>
                             </div>
                         </div>
@@ -291,6 +307,7 @@ interface Transaksi {
     delivery_datetime?: string
     sender_name?: string
     detail_transaksi?: DetailTransaksi[]
+    status_history?: StatusHistoryDB[]
 }
 
 interface StatusHistoryItem {
@@ -298,6 +315,16 @@ interface StatusHistoryItem {
     time: string
     status: string
     description: string
+}
+
+interface StatusHistoryDB {
+    id: number
+    id_transaksi: number
+    status_lama: string | null
+    status_baru: string
+    keterangan: string | null
+    updated_by: string | null
+    created_at: string
 }
 
 // Router and route
@@ -316,26 +343,52 @@ const updatingStatus = ref(false)
 // Get order ID from route params
 const orderId = route.params.id as string
 
-// Status definitions
-const statusFlow = ['diproses', 'dikirim', 'diterima']
+// Status definitions - Dynamic based on order type
+const getStatusFlow = (opsi_pengiriman: string) => {
+    if (opsi_pengiriman === 'pickup') {
+        return ['diproses', 'siap_pickup', 'diterima']
+    }
+    return ['diproses', 'dikirim', 'diterima']
+}
+
 const statusLabels = {
     'diproses': 'Processing',
     'dikirim': 'Shipped',
-    'diterima': 'Delivered'
+    'siap_pickup': 'Ready for Pickup',
+    'diterima': 'Completed'
 }
 
-const statusDescriptions = {
-    'diproses': 'Order is being processed and prepared for shipment',
-    'dikirim': 'Order has been shipped and is on the way to destination',
-    'diterima': 'Order has been successfully delivered to customer'
+const getStatusDescriptions = (opsi_pengiriman: string) => {
+    if (opsi_pengiriman === 'pickup') {
+        return {
+            'diproses': 'Order is being processed and prepared for pickup',
+            'siap_pickup': 'Order is ready for pickup at our store',
+            'diterima': 'Order has been picked up by customer'
+        }
+    }
+    return {
+        'diproses': 'Order is being processed and prepared for shipment',
+        'dikirim': 'Order has been shipped and is on the way to destination',
+        'diterima': 'Order has been successfully delivered to customer'
+    }
 }
 
 // Computed properties
+const statusFlow = computed(() => {
+    if (!order.value) return ['diproses', 'dikirim', 'diterima']
+    return getStatusFlow(order.value.opsi_pengiriman)
+})
+
+const statusDescriptions = computed(() => {
+    if (!order.value) return {}
+    return getStatusDescriptions(order.value.opsi_pengiriman)
+})
+
 const availableStatuses = computed(() => {
     if (!order.value) return []
     
-    const currentIndex = statusFlow.indexOf(order.value.status_pengiriman)
-    return statusFlow.map((status, index) => ({
+    const currentIndex = statusFlow.value.indexOf(order.value.status_pengiriman)
+    return statusFlow.value.map((status, index) => ({
         value: status,
         label: statusLabels[status as keyof typeof statusLabels],
         enabled: index > currentIndex
@@ -346,29 +399,33 @@ const statusHistory = computed(() => {
     if (!order.value) return []
     
     const history: StatusHistoryItem[] = []
-    const orderDate = new Date(order.value.tanggal_transaksi)
     
     // Add initial order creation
     history.push({
         date: formatDateOnly(order.value.tanggal_transaksi),
         time: formatTimeOnly(order.value.tanggal_transaksi),
         status: 'Order Created',
-        description: 'Order has been placed and payment is being processed'
+        description: 'Order has been placed and is being processed'
     })
     
-    // Add status progression based on current status
-    const currentIndex = statusFlow.indexOf(order.value.status_pengiriman)
-    
-    for (let i = 0; i <= currentIndex; i++) {
-        const status = statusFlow[i]
-        const statusTime = new Date(orderDate.getTime() + (i + 1) * 60 * 60 * 1000) // Add hours for demo
-        
-        history.push({
-            date: formatDateOnly(statusTime.toISOString()),
-            time: formatTimeOnly(statusTime.toISOString()),
-            status: statusLabels[status as keyof typeof statusLabels],
-            description: statusDescriptions[status as keyof typeof statusDescriptions]
-        })
+    // Add real status history from database
+    if (order.value.status_history && order.value.status_history.length > 0) {
+        order.value.status_history
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .forEach(historyItem => {
+                // Skip jika status_baru sama dengan status awal order creation
+                if (historyItem.status_baru === 'diproses' && 
+                    new Date(historyItem.created_at).getTime() === new Date(order.value!.tanggal_transaksi).getTime()) {
+                    return
+                }
+                
+                history.push({
+                    date: formatDateOnly(historyItem.created_at),
+                    time: formatTimeOnly(historyItem.created_at),
+                    status: formatShippingStatus(historyItem.status_baru),
+                    description: historyItem.keterangan || getStatusDescription(historyItem.status_baru)
+                })
+            })
     }
     
     return history.reverse() // Show latest first
@@ -397,6 +454,14 @@ const fetchOrderDetail = async () => {
                         nama_produk,
                         image_urls
                     )
+                ),
+                status_history (
+                    id,
+                    status_lama,
+                    status_baru,
+                    keterangan,
+                    created_at,
+                    updated_by
                 )
             `)
             .eq('id', orderId)
@@ -419,17 +484,40 @@ const updateStatus = async () => {
     try {
         updatingStatus.value = true
         
+        // Update status dengan custom keterangan jika ada
+        const updatePayload: any = {
+            status_pengiriman: newStatus.value
+        }
+        
         const { error: updateError } = await supabase
             .from('transaksi')
-            .update({
-                status_pengiriman: newStatus.value
-            })
+            .update(updatePayload)
             .eq('id', order.value.id)
 
         if (updateError) throw updateError
 
-        // Update local state
-        order.value.status_pengiriman = newStatus.value
+        // Jika ada custom description, update keterangan di status_history
+        if (statusDescription.value.trim()) {
+            // Ambil history terbaru yang baru saja dibuat oleh trigger
+            await new Promise(resolve => setTimeout(resolve, 100)) // Wait a bit for trigger
+            
+            const { error: historyUpdateError } = await supabase
+                .from('status_history')
+                .update({
+                    keterangan: statusDescription.value.trim()
+                })
+                .eq('id_transaksi', order.value.id)
+                .eq('status_baru', newStatus.value)
+                .order('created_at', { ascending: false })
+                .limit(1)
+
+            if (historyUpdateError) {
+                console.warn('Failed to update status description:', historyUpdateError)
+            }
+        }
+
+        // Refresh data untuk mendapatkan history terbaru
+        await fetchOrderDetail()
         
         // Close modal and reset form
         showUpdateModal.value = false
@@ -504,15 +592,24 @@ const getTotalItems = () => {
 
 const isStatusActive = (status: string) => {
     if (!order.value) return false
-    const currentIndex = statusFlow.indexOf(order.value.status_pengiriman)
-    const statusIndex = statusFlow.indexOf(status)
+    const currentIndex = statusFlow.value.indexOf(order.value.status_pengiriman)
+    const statusIndex = statusFlow.value.indexOf(status)
     return statusIndex <= currentIndex
 }
 
 const getStatusTime = (status: string) => {
     if (!order.value) return 'Pending'
-    const currentIndex = statusFlow.indexOf(order.value.status_pengiriman)
-    const statusIndex = statusFlow.indexOf(status)
+    
+    // Cari timestamp dari status history
+    if (order.value.status_history) {
+        const historyItem = order.value.status_history.find(h => h.status_baru === status)
+        if (historyItem) {
+            return formatTimeOnly(historyItem.created_at)
+        }
+    }
+      // Fallback ke status display
+    const currentIndex = statusFlow.value.indexOf(order.value.status_pengiriman)
+    const statusIndex = statusFlow.value.indexOf(status)
     
     if (statusIndex > currentIndex) return 'Pending'
     if (statusIndex === currentIndex) return 'Current'
@@ -523,13 +620,14 @@ const getStatusClass = (status: string) => {
     const classMap: Record<string, string> = {
         'diproses': 'status-processing',
         'dikirim': 'status-shipped',
+        'siap_pickup': 'status-ready',
         'diterima': 'status-delivered'
     }
     return classMap[status] || 'status-processing'
 }
 
 const getStatusDescription = (status: string) => {
-    return statusDescriptions[status as keyof typeof statusDescriptions] || ''
+    return statusDescriptions.value[status as keyof typeof statusDescriptions.value] || ''
 }
 
 // Lifecycle
@@ -678,6 +776,11 @@ onMounted(async () => {
 .status-shipped {
     background-color: #d1ecf1;
     color: #0c5460;
+}
+
+.status-ready {
+    background-color: #d4f4dd;
+    color: #0f5132;
 }
 
 .status-delivered {

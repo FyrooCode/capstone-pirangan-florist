@@ -204,8 +204,13 @@ onMounted(() => {
 
     // Set initial tab if provided in query params
     const tabParam = route.query.tab as string;
-    if (tabParam && ['dashboard', 'orders', 'address', 'account', 'wishlist'].includes(tabParam)) {
+    const orderIdParam = route.query.orderId as string;
+    
+    if (tabParam && ['dashboard', 'orders', 'address', 'account', 'wishlist', 'orderDetail'].includes(tabParam)) {
         activeTab.value = tabParam;
+        if (tabParam === 'orderDetail' && orderIdParam) {
+            currentOrderId.value = orderIdParam;
+        }
     }
 });
 </script>

@@ -20,6 +20,12 @@ export interface Transaction {
     kurir?: string;
     no_resi?: string;
     tanggal_transaksi: string;
+    opsi_pengiriman?: 'delivery' | 'pickup';
+    pickup_datetime?: string;
+    pickup_kode?: string;
+    pickup_no_telp?: string;
+    delivery_datetime?: string;
+    sender_name?: string;
 }
 
 export interface TransactionDetail {
