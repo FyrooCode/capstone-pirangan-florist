@@ -101,20 +101,24 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Quick responses -->
+          </div>          <!-- Quick responses -->
           <div class="quick-responses" v-if="chatStatus !== 'closed'">
-            <div class="quick-responses-header">
-              <h6>Respons Cepat</h6>
+            <div class="quick-responses-header" @click="showQuickResponses = !showQuickResponses">
+              <h6>
+                <i :class="showQuickResponses ? 'icon-chevron-down' : 'icon-chevron-right'"></i>
+                Respons Cepat
+              </h6>
+              <span class="toggle-hint">{{ showQuickResponses ? 'Sembunyikan' : 'Tampilkan' }}</span>
             </div>
-            <div class="quick-responses-grid">
-              <button v-for="response in quickResponses" :key="response.id" 
-                      @click="sendQuickResponse(response)" 
-                      class="quick-response-btn">
-                {{ response.text }}
-              </button>
-            </div>
+            <transition name="slide-fade">
+              <div v-show="showQuickResponses" class="quick-responses-grid">
+                <button v-for="response in quickResponses" :key="response.id" 
+                        @click="sendQuickResponse(response)" 
+                        class="quick-response-btn">
+                  {{ response.text }}
+                </button>
+              </div>
+            </transition>
           </div>
 
           <!-- Message input -->
@@ -200,14 +204,13 @@ export default {
       markMessagesAsRead,
       subscribeToMessages,
       deleteConversation
-    } = useChatService();
-
-    // Reactive data
+    } = useChatService();    // Reactive data
     const newMessage = ref('')
     const isTyping = ref(false)
     const typingTimeout = ref(null)
     const messagesContainer = ref(null)
     const showDeleteModal = ref(false)
+    const showQuickResponses = ref(false)
     
     // Real-time subscription
     let messageSubscription = null
@@ -420,8 +423,7 @@ export default {
       }
     });
 
-    return {
-      // State
+    return {      // State
       newMessage,
       isTyping,
       messagesContainer,
@@ -429,6 +431,7 @@ export default {
       loading,
       error,
       showDeleteModal,
+      showQuickResponses,
       
       // Computed
       customerName,
@@ -652,16 +655,48 @@ export default {
   background-color: #f8f9fa;
 }
 
+.quick-responses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 0;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.quick-responses-header:hover {
+  background-color: #e5e7eb;
+  padding: 8px 12px;
+  margin: 0 -12px;
+}
+
 .quick-responses-header h6 {
-  margin: 0 0 12px 0;
+  margin: 0;
   color: #374151;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-responses-header h6 i {
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.toggle-hint {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: normal;
 }
 
 .quick-responses-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
+  margin-top: 12px;
 }
 
 .quick-response-btn {
@@ -913,6 +948,22 @@ export default {
   30% {
     transform: translateY(-10px);
   }
+}
+
+/* Slide-fade transition for quick responses */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 /* Scrollbar styling */
