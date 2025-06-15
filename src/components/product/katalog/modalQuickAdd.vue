@@ -88,6 +88,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
 interface Product {
     id: number
@@ -108,6 +109,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const authStore = useAuthStore()
 const quantity = ref(1)
 const isAddingToCart = ref(false)
 
@@ -151,6 +153,26 @@ const validateQuantity = () => {
 const addToCartFromModal = async () => {
     if (!props.selectedProduct || props.selectedProduct.stok <= 0) return
     
+    // Check if user is logged in
+    if (!authStore.isLoggedIn) {
+        // Close the quick add modal first
+        const quickAddModal = document.getElementById('quick_add')
+        if (quickAddModal) {
+            const bootstrapModal = (window as any).bootstrap?.Modal?.getInstance(quickAddModal)
+            if (bootstrapModal) {
+                bootstrapModal.hide()
+            }
+        }
+        
+        // Show login modal
+        const loginModal = document.getElementById('login')
+        if (loginModal) {
+            const bootstrapModal = new (window as any).bootstrap.Modal(loginModal)
+            bootstrapModal.show()
+        }
+        return
+    }
+    
     isAddingToCart.value = true
     try {
         emit('addToCart', props.selectedProduct, quantity.value)
@@ -174,6 +196,26 @@ const addToWishlistFromModal = () => {
 
 const buyNow = () => {
     if (!props.selectedProduct || props.selectedProduct.stok <= 0) return
+    
+    // Check if user is logged in
+    if (!authStore.isLoggedIn) {
+        // Close the quick add modal first
+        const quickAddModal = document.getElementById('quick_add')
+        if (quickAddModal) {
+            const bootstrapModal = (window as any).bootstrap?.Modal?.getInstance(quickAddModal)
+            if (bootstrapModal) {
+                bootstrapModal.hide()
+            }
+        }
+        
+        // Show login modal
+        const loginModal = document.getElementById('login')
+        if (loginModal) {
+            const bootstrapModal = new (window as any).bootstrap.Modal(loginModal)
+            bootstrapModal.show()
+        }
+        return
+    }
     
     // Add to cart and redirect to checkout
     addToCartFromModal()

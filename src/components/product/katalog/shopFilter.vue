@@ -21,33 +21,33 @@
         <div class="tf-control-sorting d-flex justify-content-end">
             <div class="tf-dropdown-sort" data-bs-toggle="dropdown">
                 <div class="btn-select">
-                    <span class="text-sort-value">Featured</span>
+                    <span class="text-sort-value">Produk Lama</span>
                     <span class="icon icon-arrow-down"></span>
                 </div>
                 <div class="dropdown-menu">
-                    <div class="select-item active">
-                        <span class="text-value-item">Featured</span>
+                    <div class="select-item active" data-sort-value="date-old-new">
+                        <span class="text-value-item">Produk Lama</span>
                     </div>
-                    <div class="select-item">
-                        <span class="text-value-item">Best selling</span>
+                    <div class="select-item" data-sort-value="featured">
+                        <span class="text-value-item">Unggulan</span>
+                    </div>
+                    <div class="select-item" data-sort-value="best-selling">
+                        <span class="text-value-item">Terlaris</span>
                     </div>
                     <div class="select-item" data-sort-value="a-z">
-                        <span class="text-value-item">Alphabetically, A-Z</span>
+                        <span class="text-value-item">A ke Z</span>
                     </div>
                     <div class="select-item" data-sort-value="z-a">
-                        <span class="text-value-item">Alphabetically, Z-A</span>
+                        <span class="text-value-item">Z ke A</span>
                     </div>
                     <div class="select-item" data-sort-value="price-low-high">
-                        <span class="text-value-item">Price, low to high</span>
+                        <span class="text-value-item">Termurah</span>
                     </div>
                     <div class="select-item" data-sort-value="price-high-low">
-                        <span class="text-value-item">Price, high to low</span>
+                        <span class="text-value-item">Termahal</span>
                     </div>
-                    <div class="select-item">
-                        <span class="text-value-item">Date, old to new</span>
-                    </div>
-                    <div class="select-item">
-                        <span class="text-value-item">Date, new to old</span>
+                    <div class="select-item" data-sort-value="date-new-old">
+                        <span class="text-value-item">Produk Baru</span>
                     </div>
                 </div>
             </div>
@@ -56,7 +56,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, defineEmits } from 'vue'
+
+const emit = defineEmits<{
+    sortChanged: [sortValue: string]
+}>()
 
 onMounted(() => {
     // Wait for DOM to be ready
@@ -72,6 +76,7 @@ function initializeFilterControls() {
     // Sort dropdown functionality
     $('.select-item').on('click', function (this: HTMLElement) {
         const sortText = $(this).find('.text-value-item').text()
+        const sortValue = $(this).data('sort-value')
 
         // Update active state
         $('.select-item').removeClass('active')
@@ -79,6 +84,11 @@ function initializeFilterControls() {
 
         // Update display text
         $('.text-sort-value').text(sortText)
+
+        // Emit sort change event to parent
+        if (sortValue) {
+            emit('sortChanged', sortValue)
+        }
     })
 
     // Layout switch functionality  

@@ -1,5 +1,4 @@
 <template>
-
     <!-- Filter -->
     <div class="offcanvas offcanvas-start canvas-filter" id="filterShop">
         <div class="canvas-wrapper">
@@ -14,37 +13,60 @@
                 <div class="widget-facet wd-categories">
                     <div class="facet-title" data-bs-target="#categories" data-bs-toggle="collapse" aria-expanded="true"
                         aria-controls="categories">
-                        <span>Product categories</span>
+                        <span>Kategori Produk</span>
                         <span class="icon icon-arrow-up"></span>
                     </div>
                     <div id="categories" class="collapse show">
                         <ul class="list-categoris current-scrollbar mb_36">
-                            <li class="cate-item current"><a href="shop-default.html"><span>Fashion</span></a></li>
-                            <li class="cate-item"><a href="shop-default.html"><span>Men</span></a></li>
-                            <li class="cate-item"><a href="shop-default.html"><span>Women</span></a></li>
-                            <li class="cate-item"><a href="shop-default.html"><span>Denim</span></a></li>
-                            <li class="cate-item"><a href="shop-default.html"><span>Dress</span></a></li>
+                            <li v-if="isLoadingCategories" class="cate-item">
+                                <a href="#"><span>Memuat kategori...</span></a>
+                            </li>
+                            <li class="cate-item" :class="{ current: selectedCategoryId === null }">
+                                <a href="#" @click.prevent="selectCategory(null)">
+                                    <span>Semua Produk</span>&nbsp;<span>({{ totalProducts }})</span>
+                                </a>
+                            </li>
+                            <li v-for="category in categories" :key="category.id" class="cate-item"
+                                :class="{ current: selectedCategoryId === category.id }">
+                                <a href="#" @click.prevent="selectCategory(category.id)">
+                                    <span>{{ category.nama_kategori }}</span>&nbsp;<span>({{ category.product_count }})</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </div>
-                <form action="shop-right-sidebar.html#" id="facet-filter-form" class="facet-filter-form">
+                <form action="#" id="facet-filter-form" class="facet-filter-form">
                     <div class="widget-facet">
                         <div class="facet-title" data-bs-target="#availability" data-bs-toggle="collapse"
                             aria-expanded="true" aria-controls="availability">
-                            <span>Availability</span>
+                            <span>Ketersediaan</span>
                             <span class="icon icon-arrow-up"></span>
                         </div>
                         <div id="availability" class="collapse show">
                             <ul class="tf-filter-group current-scrollbar mb_36">
                                 <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="availability" class="tf-check" id="inStock">
-                                    <label for="inStock" class="label"><span>In
-                                            stock</span>&nbsp;<span>(14)</span></label>
+                                    <input type="radio" name="availability" class="tf-check" id="inStock" 
+                                           :checked="availabilityFilter === 'in-stock'"
+                                           @change="updateAvailability('in-stock')">
+                                    <label for="inStock" class="label">
+                                        <span>Tersedia</span>&nbsp;<span>({{ inStockCount }})</span>
+                                    </label>
                                 </li>
                                 <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="availability" class="tf-check" id="outStock">
-                                    <label for="outStock" class="label"><span>Out of
-                                            stock</span>&nbsp;<span>(2)</span></label>
+                                    <input type="radio" name="availability" class="tf-check" id="outStock"
+                                           :checked="availabilityFilter === 'out-of-stock'"
+                                           @change="updateAvailability('out-of-stock')">
+                                    <label for="outStock" class="label">
+                                        <span>Habis</span>&nbsp;<span>({{ outOfStockCount }})</span>
+                                    </label>
+                                </li>
+                                <li class="list-item d-flex gap-12 align-items-center">
+                                    <input type="radio" name="availability" class="tf-check" id="allStock"
+                                           :checked="availabilityFilter === null"
+                                           @change="updateAvailability(null)">
+                                    <label for="allStock" class="label">
+                                        <span>Semua</span>&nbsp;<span>({{ totalProducts }})</span>
+                                    </label>
                                 </li>
                             </ul>
                         </div>
@@ -52,194 +74,33 @@
                     <div class="widget-facet">
                         <div class="facet-title" data-bs-target="#price" data-bs-toggle="collapse" aria-expanded="true"
                             aria-controls="price">
-                            <span>Price</span>
+                            <span>Harga</span>
                             <span class="icon icon-arrow-up"></span>
                         </div>
                         <div id="price" class="collapse show">
                             <div class="widget-price filter-price">
-                                <div class="price-val-range" id="price-value-range" data-min="0" data-max="500"></div>
+                                <div class="mb-3">
+                                    <label for="minPrice" class="form-label">Harga Minimum:</label>
+                                    <input type="number" id="minPrice" class="form-control" 
+                                           v-model.number="priceRange.min" 
+                                           :min="0" 
+                                           :max="priceRange.max"
+                                           @input="updatePriceRange">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="maxPrice" class="form-label">Harga Maksimum:</label>
+                                    <input type="number" id="maxPrice" class="form-control" 
+                                           v-model.number="priceRange.max" 
+                                           :min="priceRange.min"
+                                           @input="updatePriceRange">
+                                </div>
                                 <div class="box-title-price">
-                                    <span class="title-price">Price :</span>
+                                    <span class="title-price">Range: </span>
                                     <div class="caption-price">
-                                        <div class="price-val" id="price-min-value" data-currency="$"></div>
-                                        <span>-</span>
-                                        <div class="price-val" id="price-max-value" data-currency="$"></div>
+                                        {{ formatPrice(priceRange.min) }} - {{ formatPrice(priceRange.max) }}
                                     </div>
                                 </div>
                             </div>
-
-                        </div>
-                    </div>
-                    <div class="widget-facet">
-                        <div class="facet-title" data-bs-target="#brand" data-bs-toggle="collapse" aria-expanded="true"
-                            aria-controls="brand">
-                            <span>Brand</span>
-                            <span class="icon icon-arrow-up"></span>
-                        </div>
-                        <div id="brand" class="collapse show">
-                            <ul class="tf-filter-group current-scrollbar mb_36">
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="brand" class="tf-check" id="Ecomus">
-                                    <label for="Ecomus" class="label"><span>Ecomus</span>&nbsp;<span>(8)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="brand" class="tf-check" id="M&H">
-                                    <label for="M&H" class="label"><span>M&H</span>&nbsp;<span>(8)</span></label>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="widget-facet">
-                        <div class="facet-title" data-bs-target="#color" data-bs-toggle="collapse" aria-expanded="true"
-                            aria-controls="color">
-                            <span>Color</span>
-                            <span class="icon icon-arrow-up"></span>
-                        </div>
-                        <div id="color" class="collapse show">
-                            <ul class="tf-filter-group filter-color current-scrollbar mb_36">
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_beige" id="Beige"
-                                        value="Beige">
-                                    <label for="Beige" class="label"><span>Beige</span>&nbsp;<span>(3)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_dark" id="Black"
-                                        value="Black">
-                                    <label for="Black" class="label"><span>Black</span>&nbsp;<span>(18)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_blue-2" id="Blue"
-                                        value="Blue">
-                                    <label for="Blue" class="label"><span>Blue</span>&nbsp;<span>(3)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_brown" id="Brown"
-                                        value="Brown">
-                                    <label for="Brown" class="label"><span>Brown</span>&nbsp;<span>(3)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_cream" id="Cream"
-                                        value="Cream">
-                                    <label for="Cream" class="label"><span>Cream</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_dark-beige"
-                                        id="Dark Beige" value="Dark Beige">
-                                    <label for="Dark Beige" class="label"><span>Dark
-                                            Beige</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_dark-blue" id="Dark Blue"
-                                        value="Dark Blue">
-                                    <label for="Dark Blue" class="label"><span>Dark
-                                            Blue</span>&nbsp;<span>(3)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_dark-green"
-                                        id="Dark Green" value="Dark Green">
-                                    <label for="Dark Green" class="label"><span>Dark
-                                            Green</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_dark-grey" id="Dark Grey"
-                                        value="Dark Grey">
-                                    <label for="Dark Grey" class="label"><span>Dark
-                                            Grey</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_grey" id="Grey"
-                                        value="Grey">
-                                    <label for="Grey" class="label"><span>Grey</span>&nbsp;<span>(2)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_light-blue"
-                                        id="Light Blue" value="Light Blue">
-                                    <label for="Light Blue" class="label"><span>Light
-                                            Blue</span>&nbsp;<span>(5)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_light-green"
-                                        id="Light Green" value="Light Green">
-                                    <label for="Light Green" class="label"><span>Light
-                                            Green</span>&nbsp;<span>(3)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_light-grey"
-                                        id="Light Grey" value="Light Grey">
-                                    <label for="Light Grey" class="label"><span>Light
-                                            Grey</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_light-pink"
-                                        id="Light Pink" value="Light Pink">
-                                    <label for="Light Pink" class="label"><span>Light
-                                            Pink</span>&nbsp;<span>(2)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_purple" id="Light Purple"
-                                        value="Light Purple">
-                                    <label for="Light Purple" class="label"><span>Light
-                                            Purple</span>&nbsp;<span>(2)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_light-yellow"
-                                        id="Light Yellow" value="Light Yellow">
-                                    <label for="Light Yellow" class="label"><span>Light
-                                            Yellow</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_orange" id="Orange"
-                                        value="Orange">
-                                    <label for="Orange" class="label"><span>Orange</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_pink" id="Pink"
-                                        value="Pink">
-                                    <label for="Pink" class="label"><span>Pink</span>&nbsp;<span>(2)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_taupe" id="Taupe"
-                                        value="Taupe">
-                                    <label for="Taupe" class="label"><span>Taupe</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_white" id="White"
-                                        value="White">
-                                    <label for="White" class="label"><span>White</span>&nbsp;<span>(14)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="color" class="tf-check-color bg_yellow" id="Yellow"
-                                        value="Yellow">
-                                    <label for="Yellow" class="label"><span>Yellow</span>&nbsp;<span>(1)</span></label>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="widget-facet">
-                        <div class="facet-title" data-bs-target="#size" data-bs-toggle="collapse" aria-expanded="true"
-                            aria-controls="size">
-                            <span>Size</span>
-                            <span class="icon icon-arrow-up"></span>
-                        </div>
-                        <div id="size" class="collapse show">
-                            <ul class="tf-filter-group current-scrollbar">
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="size" class="tf-check tf-check-size" value="S" id="S">
-                                    <label for="S" class="label"><span>S</span>&nbsp;<span>(7)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="size" class="tf-check tf-check-size" value="M" id="M">
-                                    <label for="M" class="label"><span>M</span>&nbsp;<span>(8)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="size" class="tf-check tf-check-size" value="L" id="L">
-                                    <label for="L" class="label"><span>L</span>&nbsp;<span>(8)</span></label>
-                                </li>
-                                <li class="list-item d-flex gap-12 align-items-center">
-                                    <input type="radio" name="size" class="tf-check tf-check-size" value="XL" id="XL">
-                                    <label for="XL" class="label"><span>XL</span>&nbsp;<span>(6)</span></label>
-                                </li>
-                            </ul>
                         </div>
                     </div>
                 </form>
@@ -247,8 +108,61 @@
         </div>
     </div>
     <!-- End Filter -->
-
-
-
-
 </template>
+
+<script setup lang="ts">
+import { ref, computed, defineProps, defineEmits } from 'vue'
+
+// Props
+const props = defineProps<{
+    categories: any[]
+    products: any[]
+    isLoadingCategories?: boolean
+    selectedCategoryId?: number | null
+    availabilityFilter?: string | null
+    priceRange?: { min: number, max: number }
+}>()
+
+// Emits
+const emit = defineEmits<{
+    categoryChanged: [categoryId: number | null]
+    availabilityChanged: [filter: string | null]
+    priceRangeChanged: [range: { min: number, max: number }]
+}>()
+
+// Local reactive data
+const priceRange = ref(props.priceRange || { min: 0, max: 1000000 })
+
+// Computed properties
+const totalProducts = computed(() => props.products.length)
+
+const inStockCount = computed(() => 
+    props.products.filter(product => product.stok > 0).length
+)
+
+const outOfStockCount = computed(() => 
+    props.products.filter(product => product.stok === 0).length
+)
+
+// Methods
+const selectCategory = (categoryId: number | null) => {
+    emit('categoryChanged', categoryId)
+}
+
+const updateAvailability = (filter: string | null) => {
+    emit('availabilityChanged', filter)
+}
+
+const updatePriceRange = () => {
+    emit('priceRangeChanged', priceRange.value)
+}
+
+const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(price)
+}
+</script>

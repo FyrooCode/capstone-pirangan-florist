@@ -133,9 +133,13 @@
                                                     <span class="icon icon-heart"></span>
                                                     <span class="tooltip">Add to Wishlist</span>
                                                 </a>
-                                                
-                                                <div class="w-100" v-if="isInStock">
-                                                    <a href="#" class="btns-full">Beli sekarang </a>
+                                                  <div class="w-100" v-if="isInStock">
+                                                    <button type="button" 
+                                                            @click="buyNow"
+                                                            :disabled="!isInStock"
+                                                            class="btns-full">
+                                                        Beli sekarang
+                                                    </button>
                                                     <a href="#" class="payment-more-option">More payment options</a>
                                                 </div>
                                             </form>
@@ -239,11 +243,13 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '../../utils/supabase';
 import { useCartStore } from '../../stores/cartStore';
+import { useAuthStore } from '../../stores/authStore';
 import ProductTerms from './productTerms.vue';
 
 const route = useRoute();
 const router = useRouter();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 
 // Reactive data
 const product = ref<any>(null);
@@ -344,6 +350,17 @@ const decreaseQuantity = () => {
 const addToCart = async () => {
     if (!product.value || isAddingToCart.value || !isInStock.value) return;
     
+    // Check if user is logged in
+    if (!authStore.isLoggedIn) {
+        // Show login modal
+        const loginModal = document.getElementById('login')
+        if (loginModal) {
+            const bootstrapModal = new (window as any).bootstrap.Modal(loginModal)
+            bootstrapModal.show()
+        }
+        return
+    }
+    
     isAddingToCart.value = true;
     cartMessage.value = '';
     
@@ -374,6 +391,25 @@ const addToWishlist = () => {
     if (!product.value) return;
     console.log('Add to wishlist:', product.value.nama_produk);
     alert(`Added ${product.value.nama_produk} to wishlist (not implemented yet).`);
+};
+
+const buyNow = () => {
+    if (!product.value || !isInStock.value) return;
+    
+    // Check if user is logged in
+    if (!authStore.isLoggedIn) {
+        // Show login modal
+        const loginModal = document.getElementById('login')
+        if (loginModal) {
+            const bootstrapModal = new (window as any).bootstrap.Modal(loginModal)
+            bootstrapModal.show()
+        }
+        return
+    }
+    
+    // Add to cart and redirect to checkout
+    addToCart()
+    router.push('/checkout')
 };
 
 const goBack = () => {

@@ -1,7 +1,20 @@
 <template>
 
     
-    <shopFilter></shopFilter>
+    <shopFilter @sortChanged="applySorting"></shopFilter>
+    
+    <!-- Filter Component -->
+    <filterComponent 
+        :categories="categories"
+        :products="products"
+        :isLoadingCategories="isLoadingCategories"
+        :selectedCategoryId="selectedCategoryId"
+        :availabilityFilter="availabilityFilter"
+        :priceRange="priceRange"
+        @categoryChanged="handleCategoryChange"
+        @availabilityChanged="handleAvailabilityChange"
+        @priceRangeChanged="handlePriceRangeChange"
+    />
 
     <!-- Quick Add Modal -->
     <modalQuickAdd 
@@ -138,17 +151,17 @@
             <div class="widget-facet wd-categories">
                 <div class="facet-title" data-bs-target="#categories" data-bs-toggle="collapse" aria-expanded="true"
                     aria-controls="categories">
-                    <span>Product categories</span>
+                    <span>Kategori Produk</span>
                     <span class="icon icon-arrow-up"></span>
                 </div>
                 <div id="categories" class="collapse show">
                     <ul class="list-categoris current-scrollbar mb_36">
                         <li v-if="isLoadingCategories" class="cate-item">
-                            <a href="#"><span>Loading categories...</span></a>
+                            <a href="#"><span>Memuat kategori...</span></a>
                         </li>
                         <li class="cate-item" :class="{ current: selectedCategoryId === null }">
                             <a href="#" @click.prevent="selectCategory(null)">
-                                <span>All Products</span>&nbsp;<span>({{ products.length }})</span>
+                                <span>Semua Produk</span>&nbsp;<span>({{ products.length }})</span>
                             </a>
                         </li>
                         <li v-for="category in categories" :key="category.id" class="cate-item"
@@ -164,7 +177,7 @@
             <div class="widget-facet">
                 <div class="facet-title" data-bs-target="#shipping" data-bs-toggle="collapse" aria-expanded="true"
                     aria-controls="shipping">
-                    <span>Shipping & Delivery</span>
+                    <span>Pengiriman & Penyerahan</span>
                     <span class="icon icon-arrow-up"></span>
                 </div>
                 <div id="shipping" class="collapse show">
@@ -182,8 +195,8 @@
                                         </svg>
                                     </div>
                                     <div class="iconbox-content">
-                                        <h4 class="iconbox-title">Free shipping</h4>
-                                        <p class="iconbox-desc">Free iconbox for all US order</p>
+                                        <h4 class="iconbox-title">Gratis ongkir</h4>
+                                        <p class="iconbox-desc">Gratis ongkir untuk semua pesanan</p>
                                     </div>
                                 </li>
                                 <li class="iconbox-item">
@@ -196,8 +209,8 @@
                                         </svg>
                                     </div>
                                     <div class="iconbox-content">
-                                        <h4 class="iconbox-title">Premium Support</h4>
-                                        <p class="iconbox-desc">Support 24 hours a day</p>
+                                        <h4 class="iconbox-title">Dukungan Premium</h4>
+                                        <p class="iconbox-desc">Dukungan 24 jam sehari</p>
                                     </div>
                                 </li>
                                 <li class="iconbox-item">
@@ -210,8 +223,8 @@
                                         </svg>
                                     </div>
                                     <div class="iconbox-content">
-                                        <h4 class="iconbox-title">30 Days Return</h4>
-                                        <p class="iconbox-desc">You have 30 days to return</p>
+                                        <h4 class="iconbox-title">Pengembalian 30 Hari</h4>
+                                        <p class="iconbox-desc">Anda memiliki 30 hari untuk mengembalikan</p>
                                     </div>
                                 </li>
                             </ul>
@@ -251,12 +264,15 @@ import { ref, onMounted, computed } from 'vue';
 import { supabase } from '../../../utils/supabase'; // Adjusted path
 import { useRouter } from 'vue-router';
 import { useCartStore } from '../../../stores/cartStore';
+import { useAuthStore } from '../../../stores/authStore';
 import shopFilter from './shopFilter.vue';
+import filterComponent from './filter.vue';
 import modalQuickAdd from './modalQuickAdd.vue';
 import modalQuickView from './modalQuickView.vue';
 
 const router = useRouter();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 
 // Reactive data
 const products = ref<any[]>([]);
@@ -268,14 +284,69 @@ const errorMessage = ref('');
 const selectedProductForQuickAdd = ref<any | null>(null);
 const selectedProductForQuickView = ref<any | null>(null);
 
+// Filter states
+const availabilityFilter = ref<string | null>(null);
+const priceRange = ref({ min: 0, max: 1000000 });
+
+// Sorting state
+const sortBy = ref<string>('created_at');
+const sortOrder = ref<string>('asc'); // 'asc' for oldest first, 'desc' for newest first
+
 // Computed property for filtered products by category
 const filteredProducts = computed(() => {
-    if (selectedCategoryId.value === null) {
-        return products.value;
+    let result = selectedCategoryId.value === null 
+        ? products.value 
+        : products.value.filter(product =>
+            product.kategori && product.kategori.id === selectedCategoryId.value
+        );
+
+    // Apply availability filter
+    if (availabilityFilter.value === 'in-stock') {
+        result = result.filter(product => product.stok > 0);
+    } else if (availabilityFilter.value === 'out-of-stock') {
+        result = result.filter(product => product.stok === 0);
     }
-    return products.value.filter(product =>
-        product.kategori && product.kategori.id === selectedCategoryId.value
+
+    // Apply price range filter
+    result = result.filter(product => 
+        product.harga >= priceRange.value.min && product.harga <= priceRange.value.max
     );
+
+    // Apply sorting
+    result = [...result].sort((a, b) => {
+        let aValue, bValue;
+
+        switch (sortBy.value) {
+            case 'nama_produk_asc':
+                aValue = a.nama_produk.toLowerCase();
+                bValue = b.nama_produk.toLowerCase();
+                return aValue.localeCompare(bValue);
+            
+            case 'nama_produk_desc':
+                aValue = a.nama_produk.toLowerCase();
+                bValue = b.nama_produk.toLowerCase();
+                return bValue.localeCompare(aValue);
+            
+            case 'harga_asc':
+                return a.harga - b.harga;
+            
+            case 'harga_desc':
+                return b.harga - a.harga;
+            
+            case 'created_at':
+                if (sortOrder.value === 'asc') {
+                    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                } else {
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                }
+            
+            default:
+                // Default to oldest first
+                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }
+    });
+
+    return result;
 });
 
 // Fetch products from Supabase
@@ -299,11 +370,19 @@ const fetchProducts = async () => {
                     nama_kategori
                 )
             `)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: true }); // Changed to true for oldest first
 
         if (error) throw error;
 
         products.value = data || [];
+        
+        // Update price range based on actual product data
+        if (products.value.length > 0) {
+            const prices = products.value.map(p => p.harga);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            priceRange.value = { min: minPrice, max: maxPrice };
+        }
     } catch (error: any) {
         errorMessage.value = `Error fetching products: ${error.message}`;
         console.error('Error fetching products:', error);
@@ -366,6 +445,50 @@ const formatPrice = (price: number) => {
 // Category selection
 const selectCategory = (categoryId: number | null) => {
     selectedCategoryId.value = categoryId;
+};
+
+// Filter handlers
+const handleCategoryChange = (categoryId: number | null) => {
+    selectedCategoryId.value = categoryId;
+};
+
+const handleAvailabilityChange = (filter: string | null) => {
+    availabilityFilter.value = filter;
+};
+
+const handlePriceRangeChange = (range: { min: number, max: number }) => {
+    priceRange.value = range;
+};
+
+// Sorting functions
+const applySorting = (sortValue: string) => {
+    switch (sortValue) {
+        case 'a-z':
+            sortBy.value = 'nama_produk_asc';
+            break;
+        case 'z-a':
+            sortBy.value = 'nama_produk_desc';
+            break;
+        case 'price-low-high':
+            sortBy.value = 'harga_asc';
+            break;
+        case 'price-high-low':
+            sortBy.value = 'harga_desc';
+            break;
+        case 'date-old-new':
+            sortBy.value = 'created_at';
+            sortOrder.value = 'asc';
+            break;
+        case 'date-new-old':
+            sortBy.value = 'created_at';
+            sortOrder.value = 'desc';
+            break;
+        default:
+            // Default to oldest first
+            sortBy.value = 'created_at';
+            sortOrder.value = 'asc';
+            break;
+    }
 };
 
 // Product actions
@@ -460,9 +583,16 @@ function initializeShopLayoutSwitcher() {
 
     $('.select-item').on('click', function (this: HTMLElement) {
         const sortText = $(this).find('.text-value-item').text();
+        const sortValue = $(this).data('sort-value');
+        
         $('.select-item').removeClass('active');
         $(this).addClass('active');
         $('.text-sort-value').text(sortText);
+        
+        // Apply sorting if sort value exists
+        if (sortValue) {
+            applySorting(sortValue);
+        }
     });
 }
 
