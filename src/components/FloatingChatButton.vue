@@ -16,10 +16,47 @@
         <button @click="toggleChat" class="chat-close-btn">
           <i class="icon-close"></i>
         </button>
-      </div>
+      </div>      <div class="chat-body" ref="chatBody">        <!-- Contact Form (for new users) -->
+        <div v-if="showContactForm" class="contact-form">
+          <div class="contact-form-header">
+            <h4>Mulai Percakapan</h4>
+            <p v-if="!isLoggedIn">Silakan isi data Anda untuk memulai chat dengan tim kami</p>
+            <p v-else>Mulai percakapan dengan tim customer support kami</p>
+          </div>
+          <div class="contact-form-body">
+            <!-- Only show name and email fields if user is not logged in -->
+            <div v-if="!isLoggedIn" class="form-group">
+              <label>Nama *</label>
+              <input v-model="customerName" type="text" placeholder="Nama lengkap" required>
+            </div>
+            <div v-if="!isLoggedIn" class="form-group">
+              <label>Email *</label>
+              <input v-model="customerEmail" type="email" placeholder="Email Anda" required>
+            </div>
+            <!-- Show logged in user info -->
+            <div v-if="isLoggedIn" class="logged-user-info">
+              <div class="user-info-item">
+                <strong>Nama:</strong> {{ loggedInUserName }}
+              </div>
+              <div class="user-info-item">
+                <strong>Email:</strong> {{ loggedInUserEmail }}
+              </div>
+            </div>
+            <div class="form-group">
+              <label>No. Telepon (Opsional)</label>
+              <input v-model="customerPhone" type="tel" placeholder="No. telepon">
+            </div>
+            <div class="form-actions">
+              <button @click="showContactForm = false" class="btn-cancel">Batal</button>
+              <button @click="handleContactSubmit" class="btn-submit" :disabled="!isLoggedIn && (!customerName.trim() || !customerEmail.trim())">
+                Mulai Chat
+              </button>
+            </div>
+          </div>
+        </div>
 
-      <div class="chat-body" ref="chatBody">
-        <div class="chat-messages">
+        <!-- Chat Messages -->
+        <div v-else class="chat-messages">
           <!-- Welcome Message -->
           <div class="message bot-message">
             <div class="message-avatar">
@@ -34,17 +71,17 @@
             </div>
           </div>
 
-          <!-- Dynamic Messages -->
-          <div v-for="(message, index) in messages" :key="index" 
-               :class="['message', message.type === 'user' ? 'user-message' : 'bot-message']">
-            <div v-if="message.type === 'bot'" class="message-avatar">
+          <!-- Real Messages from Supabase -->
+          <div v-for="message in sortedMessages" :key="message.id" 
+               :class="['message', message.is_from_customer ? 'user-message' : 'bot-message']">
+            <div v-if="!message.is_from_customer" class="message-avatar">
               <img src="/user/images/csicon.png" alt="Support" @error="handleAvatarError">
             </div>
             <div class="message-content">
               <div class="message-bubble">
-                <p>{{ message.text }}</p>
+                <p>{{ message.message }}</p>
               </div>
-              <span class="message-time">{{ message.time }}</span>
+              <span class="message-time">{{ formatTime(message.created_at) }}</span>
             </div>
           </div>
 
@@ -62,22 +99,20 @@
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="chat-footer">
+      </div>      <div class="chat-footer" v-if="!showContactForm">
         <!-- Quick Actions -->
-        <div v-if="showQuickActions" class="quick-actions">
-          <button @click="sendQuickMessage('Saya ingin bertanya tentang produk')" class="quick-action-btn">
+        <div v-if="showQuickActions && !currentConversationId" class="quick-actions">
+          <button @click="sendQuickAction('info')" class="quick-action-btn">
             🌹 Tentang Produk
           </button>
-          <button @click="sendQuickMessage('Bagaimana cara memesan?')" class="quick-action-btn">
+          <button @click="sendQuickAction('order')" class="quick-action-btn">
             📝 Cara Pesan
           </button>
-          <button @click="sendQuickMessage('Berapa biaya pengiriman?')" class="quick-action-btn">
-            🚚 Pengiriman
+          <button @click="sendQuickAction('location')" class="quick-action-btn">
+            📍 Lokasi Toko
           </button>
-          <button @click="sendQuickMessage('Jam operasional toko?')" class="quick-action-btn">
-            🕒 Jam Buka
+          <button @click="sendQuickAction('price')" class="quick-action-btn">
+            💰 Harga
           </button>
         </div>
 
@@ -90,9 +125,10 @@
               type="text" 
               placeholder="Ketik pesan Anda..."
               class="chat-input"
-              :disabled="isTyping"
-            >            <button @click="sendMessage" :disabled="!currentMessage.trim() || isTyping" class="send-btn">
-              <i class="icon-arrow-right" v-if="!isTyping"></i>
+              :disabled="loading"
+            >
+            <button @click="sendMessage" :disabled="!currentMessage.trim() || loading" class="send-btn">
+              <i class="icon-arrow-right" v-if="!loading"></i>
               <div v-else class="loading-spinner"></div>
             </button>
           </div>
@@ -118,7 +154,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useChatService } from '@/composables/useChatService'
+import { formatMessageTime, scrollToBottom } from '@/utils/chatHelpers'
+import { useAuthStore } from '@/stores/authStore'
 
 // Reactive data
 const isChatOpen = ref(false)
@@ -128,153 +167,374 @@ const unreadCount = ref(0)
 const showQuickActions = ref(true)
 const chatBody = ref<HTMLElement | null>(null)
 
+// Auth store
+const authStore = useAuthStore()
+
+// Customer info for new conversations
+const customerName = ref('')
+const customerEmail = ref('')
+const customerPhone = ref('')
+const showContactForm = ref(false)
+const currentConversationId = ref<string | null>(null)
+
+// Computed to check if user is logged in and has profile
+const isLoggedIn = computed(() => authStore.isLoggedIn && authStore.user)
+const loggedInUserName = computed(() => {
+  if (authStore.userProfile && (authStore.userProfile.first_name || authStore.userProfile.last_name)) {
+    return `${authStore.userProfile.first_name || ''} ${authStore.userProfile.last_name || ''}`.trim()
+  }
+  // Fallback to email username if no first/last name
+  if (authStore.user?.email) {
+    return authStore.user.email.split('@')[0]
+  }
+  return 'User'
+})
+const loggedInUserEmail = computed(() => authStore.user?.email || '')
+
+// Chat service
+const {
+  currentConversation,
+  messages,
+  loading,
+  error,
+  createConversation,
+  sendMessage: sendMessageToService,
+  fetchMessages,
+  subscribeToMessages
+} = useChatService()
+
+// Real-time subscription
+let messageSubscription: any = null
+
 interface Message {
-  text: string
-  type: 'user' | 'bot'
-  time: string
+  id: string
+  message: string
+  is_from_customer: boolean
+  created_at: string
 }
 
-const messages = ref<Message[]>([])
-
-// Auto responses for demo purposes
-const autoResponses = {
-  'produk': [
-    'Kami memiliki berbagai macam bunga segar seperti mawar, tulip, anggrek, dan masih banyak lagi! 🌹',
-    'Semua produk kami menggunakan bunga berkualitas tinggi dan fresh dari petani terpercaya.',
-    'Apakah ada jenis bunga tertentu yang Anda cari?'
-  ],
-  'pesan': [
-    'Cara memesan sangat mudah! Anda bisa:',
-    '1. Pilih produk di katalog kami',
-    '2. Klik "Add to Cart" dan atur jumlah',
-    '3. Checkout dan isi data pengiriman',
-    '4. Pilih metode pembayaran',
-    '5. Konfirmasi pesanan',
-    'Tim kami akan segera memproses pesanan Anda! 😊'
-  ],
-  'pengiriman': [
-    'Kami menyediakan layanan pengiriman ke seluruh area Bandung dan sekitarnya! 🚚',
-    'Biaya pengiriman mulai dari Rp 15.000 tergantung lokasi.',
-    'Untuk pemesanan dalam kota, kami juga melayani same-day delivery.',
-    'Pengiriman gratis untuk pembelian di atas Rp 500.000!'
-  ],
-  'jam': [
-    'Jam operasional kami:',
-    '🕘 Senin - Sabtu: 08:00 - 20:00',
-    '🕘 Minggu: 09:00 - 18:00',
-    'Kami juga melayani pre-order 24 jam melalui website ini! 😊'
-  ],
-  'default': [
-    'Terima kasih atas pertanyaan Anda! 😊',
-    'Tim customer service kami akan membantu Anda dengan senang hati.',
-    'Untuk bantuan lebih lanjut, Anda bisa menghubungi kami di WhatsApp: 0821-1234-5678'
-  ]
-}
+const sortedMessages = computed(() => {
+  return [...messages.value].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+})
 
 // Methods
 const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
-  
   if (isChatOpen.value) {
     unreadCount.value = 0
     nextTick(() => {
-      scrollToBottom()
+      scrollToBottomContainer()
     })
   }
 }
 
-const sendMessage = () => {
-  if (!currentMessage.value.trim() || isTyping.value) return
-
-  const userMessage: Message = {
-    text: currentMessage.value,
-    type: 'user',
-    time: getCurrentTime()
-  }
-
-  messages.value.push(userMessage)
-  const messageText = currentMessage.value.toLowerCase()
-  currentMessage.value = ''
-  showQuickActions.value = false
-
-  nextTick(() => {
-    scrollToBottom()
-    simulateBotResponse(messageText)
-  })
-}
-
-const sendQuickMessage = (text: string) => {
-  currentMessage.value = text
-  sendMessage()
-}
-
-const simulateBotResponse = (userMessage: string) => {
-  isTyping.value = true
+const handleContactSubmit = async () => {
+  // Debug logging
+  console.log('isLoggedIn:', isLoggedIn.value)
+  console.log('authStore.isLoggedIn:', authStore.isLoggedIn)
+  console.log('authStore.userProfile:', authStore.userProfile)
+  console.log('loggedInUserName:', loggedInUserName.value)
+  console.log('loggedInUserEmail:', loggedInUserEmail.value)
   
-  setTimeout(() => {
-    let responses = autoResponses.default
-    
-    if (userMessage.includes('produk') || userMessage.includes('bunga')) {
-      responses = autoResponses.produk
-    } else if (userMessage.includes('pesan') || userMessage.includes('order')) {
-      responses = autoResponses.pesan
-    } else if (userMessage.includes('kirim') || userMessage.includes('pengiriman') || userMessage.includes('ongkir')) {
-      responses = autoResponses.pengiriman
-    } else if (userMessage.includes('jam') || userMessage.includes('buka') || userMessage.includes('tutup')) {
-      responses = autoResponses.jam
-    }
+  // Use logged in user data if available, otherwise use form data
+  const finalCustomerName = isLoggedIn.value ? loggedInUserName.value : customerName.value.trim()
+  const finalCustomerEmail = isLoggedIn.value ? loggedInUserEmail.value : customerEmail.value.trim()
+  const finalCustomerPhone = customerPhone.value.trim()
 
-    responses.forEach((response, index) => {
-      setTimeout(() => {
-        const botMessage: Message = {
-          text: response,
-          type: 'bot',
-          time: getCurrentTime()
-        }
-        
-        messages.value.push(botMessage)
-        
-        if (index === responses.length - 1) {
-          isTyping.value = false
-          
-          if (!isChatOpen.value) {
-            unreadCount.value += responses.length
-          }
-        }
-        
-        nextTick(() => {
-          scrollToBottom()
-        })
-      }, index * 1000)
+  console.log('finalCustomerName:', finalCustomerName)
+  console.log('finalCustomerEmail:', finalCustomerEmail)
+
+  // Different validation for logged in vs non-logged in users
+  if (isLoggedIn.value) {
+    // For logged in users, check computed values
+    if (!finalCustomerName || !finalCustomerEmail) {
+      alert('Data user tidak lengkap. Silakan lengkapi profil Anda terlebih dahulu.')
+      return
+    }
+  } else {
+    // For non-logged in users, check form inputs
+    if (!customerName.value.trim() || !customerEmail.value.trim()) {
+      alert('Nama dan email harus diisi!')
+      return
+    }
+  }
+
+  const initialMessage = 'Halo, saya ingin bertanya tentang produk Anda.'
+  
+  const conversation = await createConversation({
+    customer_name: finalCustomerName,
+    customer_email: finalCustomerEmail,
+    customer_phone: finalCustomerPhone,
+    initial_message: initialMessage
+  })
+
+  if (conversation) {
+    currentConversationId.value = conversation.id
+    showContactForm.value = false
+    
+    // Subscribe to messages for this conversation
+    if (messageSubscription) {
+      messageSubscription.unsubscribe()
+    }
+    
+    messageSubscription = subscribeToMessages(conversation.id, () => {
+      // Auto-scroll when new messages arrive
+      nextTick(() => {
+        scrollToBottomContainer()
+      })
     })
-  }, 1500)
+    
+    // Load messages
+    await fetchMessages(conversation.id)
+  }
 }
 
-const scrollToBottom = () => {
+const sendMessage = async () => {
+  if (!currentMessage.value.trim()) return
+
+  // If no conversation exists
+  if (!currentConversationId.value) {
+    if (isLoggedIn.value) {
+      // Create conversation automatically for logged in users
+      await handleContactSubmit()
+      // After creating conversation, send the current message
+      if (currentConversationId.value) {
+        const messageData = {
+          conversation_id: currentConversationId.value,
+          message: currentMessage.value.trim(),
+          is_from_customer: true
+        }
+        
+        const success = await sendMessageToService(messageData)
+        
+        if (success) {
+          currentMessage.value = ''
+          showQuickActions.value = false
+          
+          nextTick(() => {
+            scrollToBottomContainer()
+          })
+        } else {
+          // If sending failed, handle error
+          handleConversationNotFound()
+        }
+      }
+      return
+    } else {
+      // Show contact form for non-logged in users
+      showContactForm.value = true
+      return
+    }
+  }
+
+  const messageData = {
+    conversation_id: currentConversationId.value,
+    message: currentMessage.value.trim(),
+    is_from_customer: true
+  }
+
+  const success = await sendMessageToService(messageData)
+  
+  if (success) {
+    currentMessage.value = ''
+    showQuickActions.value = false
+    
+    // Scroll to bottom after sending
+    nextTick(() => {
+      scrollToBottomContainer()
+    })  } else {
+    // If sending failed, check if conversation was deleted
+    if (error.value && (error.value.includes('conversation') || error.value.includes('Conversation not found'))) {
+      handleConversationNotFound()
+    }
+  }
+}
+
+const sendQuickAction = async (action: string) => {
+  let message = ''
+  
+  switch (action) {
+    case 'info':
+      message = 'Saya ingin informasi tentang produk bunga Anda'
+      break
+    case 'order':
+      message = 'Bagaimana cara memesan bunga?'
+      break
+    case 'location':
+      message = 'Di mana lokasi toko Anda?'
+      break
+    case 'price':
+      message = 'Berapa harga produk bunga Anda?'
+      break
+  }
+
+  if (message) {
+    currentMessage.value = message
+    await sendMessage()
+  }
+}
+
+const scrollToBottomContainer = () => {
   if (chatBody.value) {
-    chatBody.value.scrollTop = chatBody.value.scrollHeight
+    scrollToBottom(chatBody.value)
   }
 }
 
 const getCurrentTime = () => {
-  const now = new Date()
-  return now.toLocaleTimeString('id-ID', { 
+  return new Date().toLocaleTimeString('id-ID', { 
     hour: '2-digit', 
     minute: '2-digit' 
   })
 }
 
-const handleAvatarError = (event: Event) => {
-  (event.target as HTMLImageElement).src = '/user/images/avatar/default-avatar.png'
+const formatTime = (timestamp: string) => {
+  return formatMessageTime(timestamp)
 }
 
-// Auto-show welcome message after delay
-onMounted(() => {
-  setTimeout(() => {
-    if (!isChatOpen.value) {
-      unreadCount.value = 1
+const handleAvatarError = (event: Event) => {
+  const target = event.target as HTMLImageElement
+  target.style.display = 'none'
+  target.parentElement!.innerHTML = '<i class="icon-user"></i>'
+}
+
+// Handle when conversation is not found (deleted by admin)
+const handleConversationNotFound = () => {
+  // Clear stored conversation data
+  currentConversationId.value = null
+  localStorage.removeItem('customer_conversation_id')
+  localStorage.removeItem('customer_name')
+  localStorage.removeItem('customer_email')
+  
+  // Clear messages
+  messages.value = []
+  
+  // Unsubscribe from realtime updates
+  if (messageSubscription) {
+    messageSubscription.unsubscribe()
+    messageSubscription = null
+  }
+  
+  // Show contact form to start new conversation
+  showContactForm.value = true
+  alert('Percakapan sebelumnya telah ditutup oleh admin. Silakan mulai percakapan baru.')
+}
+
+// Initialize existing conversation (check for logged in user or localStorage)
+const initializeExistingConversation = async () => {
+  if (isLoggedIn.value) {
+    // User is logged in, try to find existing conversation by email
+    try {
+      const { fetchConversations } = useChatService()
+      const conversations = await fetchConversations({ 
+        search: loggedInUserEmail.value,
+        limit: 1 
+      })
+      
+      if (conversations && conversations.length > 0) {
+        const existingConversation = conversations[0]
+        currentConversationId.value = existingConversation.id
+        customerName.value = existingConversation.customer_name
+        customerEmail.value = existingConversation.customer_email
+        customerPhone.value = existingConversation.customer_phone || ''
+        
+        // Load existing messages
+        await fetchMessages(existingConversation.id)
+        
+        // Subscribe to real-time updates
+        messageSubscription = subscribeToMessages(existingConversation.id, () => {
+          nextTick(() => {
+            scrollToBottomContainer()
+          })
+        })
+        return
+      } else {
+        // Pre-fill form with logged in user data
+        customerName.value = loggedInUserName.value
+        customerEmail.value = loggedInUserEmail.value
+      }
+    } catch (error) {
+      console.error('Error fetching existing conversation:', error)
     }
-  }, 3000)
+  }
+  
+  // Fallback to localStorage for non-logged in users
+  const existingConversationId = localStorage.getItem('customer_conversation_id')
+  const existingCustomerName = localStorage.getItem('customer_name')
+  const existingCustomerEmail = localStorage.getItem('customer_email')
+  
+  if (existingConversationId && existingCustomerName && existingCustomerEmail) {
+    try {
+      // Validate if conversation still exists by trying to fetch it
+      const { getConversationById } = useChatService()
+      const conversation = await getConversationById(existingConversationId)
+      
+      if (conversation) {
+        currentConversationId.value = existingConversationId
+        customerName.value = existingCustomerName
+        customerEmail.value = existingCustomerEmail
+        
+        // Load existing messages
+        await fetchMessages(existingConversationId)
+        
+        // Subscribe to real-time updates
+        messageSubscription = subscribeToMessages(existingConversationId, () => {
+          nextTick(() => {
+            scrollToBottomContainer()
+          })
+        })
+      } else {
+        // Conversation was deleted, clear localStorage
+        handleConversationNotFound()
+      }
+    } catch (error) {
+      console.error('Error validating existing conversation:', error)
+      // If validation fails, clear stored data
+      handleConversationNotFound()
+    }
+  }
+}
+
+// Save conversation info to localStorage
+watch(currentConversationId, (newId) => {
+  if (newId) {
+    localStorage.setItem('customer_conversation_id', newId)
+    localStorage.setItem('customer_name', customerName.value)
+    localStorage.setItem('customer_email', customerEmail.value)
+  }
+})
+
+// Update unread count when new admin messages arrive
+watch(messages, (newMessages) => {
+  if (!isChatOpen.value) {
+    const adminMessages = newMessages.filter(m => !m.is_from_customer)
+    const lastAdminMessage = adminMessages[adminMessages.length - 1]
+    
+    if (lastAdminMessage) {
+      const messageTime = new Date(lastAdminMessage.created_at).getTime()
+      const now = new Date().getTime()
+      
+      // If message is less than 10 seconds old, increment unread count
+      if (now - messageTime < 10000) {
+        unreadCount.value++
+      }
+    }
+  }
+}, { deep: true })
+
+// Lifecycle
+onMounted(async () => {
+  // Ensure auth store is initialized
+  await authStore.initialize()
+  console.log('Auth initialized, isLoggedIn:', authStore.isLoggedIn)
+  console.log('User profile:', authStore.userProfile)
+  
+  await initializeExistingConversation()
+})
+
+onUnmounted(() => {
+  if (messageSubscription) {
+    messageSubscription.unsubscribe()
+  }
 })
 </script>
 
@@ -652,6 +912,120 @@ onMounted(() => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Contact Form Styles */
+.contact-form {
+  padding: 20px;
+  background: white;
+  height: 100%;
+}
+
+.contact-form-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.contact-form-header h4 {
+  margin: 0 0 8px 0;
+  color: #214332;
+  font-size: 18px;
+}
+
+.contact-form-header p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.contact-form-body .form-group {
+  margin-bottom: 15px;
+}
+
+.contact-form-body label {
+  display: block;
+  margin-bottom: 5px;
+  color: #214332;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.contact-form-body input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.contact-form-body input:focus {
+  outline: none;
+  border-color: #214332;
+  box-shadow: 0 0 0 2px rgba(33, 67, 50, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-cancel, .btn-submit {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.btn-submit {
+  background: #214332;
+  color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #1a3329;
+}
+
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Logged User Info */
+.logged-user-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.user-info-item {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.user-info-item:last-child {
+  margin-bottom: 0;
+}
+
+.user-info-item strong {
+  color: #111827;
+  margin-right: 8px;
 }
 
 /* Responsive */

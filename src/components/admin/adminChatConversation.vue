@@ -1,8 +1,6 @@
 <template>
   <div class="main-content">
-    <!-- main-content-wrap -->
     <div class="main-content-inner">
-      <!-- main-content-wrap -->
       <div class="main-content-wrap">
         <div class="flex items-center flex-wrap justify-between gap20 mb-30">
           <h3>Chat dengan {{ customerName }}</h3>
@@ -30,7 +28,8 @@
         </div>
 
         <!-- Chat conversation -->
-        <div class="wg-box chat-conversation">          <!-- Chat header -->
+        <div class="wg-box chat-conversation">
+          <!-- Chat header -->
           <div class="chat-header">
             <div class="flex items-center gap15">
               <div class="customer-avatar">
@@ -47,25 +46,28 @@
                   </span>
                 </div>
               </div>
-            </div>
-            <div class="chat-actions">
-              <button @click="markAsRead" v-if="chatStatus === 'unread'" 
+            </div>            <div class="chat-actions">
+              <button @click="reopenChat" v-if="chatStatus === 'closed'" 
                       class="tf-button style-1 small">
-                <i class="icon-check"></i> Tandai dibaca
+                <i class="icon-refresh-cw"></i> Buka kembali
               </button>
               <button @click="closeChat" v-if="chatStatus !== 'closed'" 
                       class="tf-button style-2 small">
                 <i class="icon-x"></i> Tutup chat
+              </button>
+              <button @click="confirmDeleteChat" 
+                      class="tf-button style-3 small delete-btn">
+                <i class="icon-trash-2"></i> Hapus Chat
               </button>
             </div>
           </div>
 
           <!-- Messages container -->
           <div class="chat-messages" ref="messagesContainer">
-            <div v-for="message in messages" :key="message.id" 
-                 :class="['message', { 'from-admin': !message.isFromCustomer, 'from-customer': message.isFromCustomer }]">
-                <div class="message-avatar">
-                <div v-if="message.isFromCustomer" class="user-initial-small">
+            <div v-for="message in sortedMessages" :key="message.id" 
+                 :class="['message', { 'from-admin': !message.is_from_customer, 'from-customer': message.is_from_customer }]">
+              <div class="message-avatar">
+                <div v-if="message.is_from_customer" class="user-initial-small">
                   {{ getInitials(customerName) }}
                 </div>
                 <div v-else class="admin-avatar">
@@ -76,17 +78,15 @@
               <div class="message-content">
                 <div class="message-header">
                   <span class="sender-name">
-                    {{ message.isFromCustomer ? customerName : 'Admin' }}
+                    {{ message.is_from_customer ? customerName : 'Admin' }}
                   </span>
-                  <span class="message-time">{{ formatMessageTime(message.timestamp) }}</span>
+                  <span class="message-time">{{ formatTime(message.created_at) }}</span>
                 </div>
-                <div class="message-text">{{ message.content }}</div>
-                <div v-if="message.quickAction" class="quick-action-response">
-                  <i class="icon-zap"></i>
-                  <span>Respons otomatis</span>
-                </div>
+                <div class="message-text">{{ message.message }}</div>
               </div>
-            </div>            <!-- Typing indicator -->
+            </div>
+
+            <!-- Typing indicator -->
             <div v-if="isTyping" class="message from-customer typing-indicator">
               <div class="message-avatar">
                 <div class="user-initial-small">
@@ -132,11 +132,10 @@
                         class="send-button">
                   <i class="icon-send"></i>
                   Kirim
-                </button>
-              </div>
+                </button>              </div>
             </div>
           </div>
-
+          
           <!-- Chat closed message -->
           <div v-if="chatStatus === 'closed'" class="chat-closed-notice">
             <i class="icon-lock"></i>
@@ -145,196 +144,311 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="modal-overlay" @click="showDeleteModal = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h4>Konfirmasi Hapus Chat</h4>
+          <button @click="showDeleteModal = false" class="modal-close">
+            <i class="icon-x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="warning-icon">
+            <i class="icon-alert-triangle"></i>
+          </div>
+          <p>Apakah Anda yakin ingin menghapus percakapan dengan <strong>{{ customerName }}</strong>?</p>
+          <p class="warning-text">Tindakan ini tidak dapat dibatalkan. Semua pesan dalam percakapan ini akan dihapus secara permanen.</p>
+        </div>
+        <div class="modal-footer">
+          <button @click="showDeleteModal = false" class="btn-cancel">
+            Batal
+          </button>
+          <button @click="deleteChat" :disabled="loading" class="btn-delete">
+            <i class="icon-trash-2"></i>
+            {{ loading ? 'Menghapus...' : 'Hapus Chat' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import { useChatService } from '@/composables/useChatService'
+import { formatMessageTime, getInitials, getStatusText, scrollToBottom, playNotificationSound } from '@/utils/chatHelpers'
+import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
 export default {
   name: 'AdminChatConversation',
-  props: {
-    id: {
-      type: [String, Number],
-      required: true
+  setup() {
+    const route = useRoute()
+    const router = useRouter()
+    const conversationId = route.params.id
+    
+    const {
+      currentConversation,
+      messages,
+      loading,
+      error,
+      getConversationById,
+      fetchMessages,
+      sendMessage: sendMessageToService,
+      updateConversationStatus,
+      markMessagesAsRead,
+      subscribeToMessages,
+      deleteConversation
+    } = useChatService();
+
+    // Reactive data
+    const newMessage = ref('')
+    const isTyping = ref(false)
+    const typingTimeout = ref(null)
+    const messagesContainer = ref(null)
+    const showDeleteModal = ref(false)
+    
+    // Real-time subscription
+    let messageSubscription = null
+
+    // Quick responses
+    const quickResponses = ref([
+      { id: 1, text: 'Terima kasih telah menghubungi kami!' },
+      { id: 2, text: 'Saya akan mengecek ketersediaan untuk Anda.' },
+      { id: 3, text: 'Produk tersebut tersedia. Apakah ada yang bisa saya bantu lagi?' },
+      { id: 4, text: 'Mohon tunggu sebentar, saya akan mengecek informasinya.' },
+      { id: 5, text: 'Untuk informasi harga dan ketersediaan, silakan lihat katalog kami.' },
+      { id: 6, text: 'Apakah ada pertanyaan lain yang bisa saya bantu?' }
+    ])
+
+    // Computed properties
+    const customerName = computed(() => currentConversation.value?.customer_name || 'Loading...')
+    const customerEmail = computed(() => currentConversation.value?.customer_email || '')
+    const customerPhone = computed(() => currentConversation.value?.customer_phone || '')
+    const chatStatus = computed(() => {
+      if (!currentConversation.value) return 'active'
+      return mapStatus(currentConversation.value.status)
+    })
+
+    const sortedMessages = computed(() => {
+      return [...messages.value].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    })
+
+    // Methods
+    const mapStatus = (supabaseStatus) => {
+      switch (supabaseStatus) {
+        case 'new':
+          return 'unread'
+        case 'in_progress':
+          return 'active'
+        case 'closed':
+          return 'closed'
+        default:
+          return 'active'
+      }
     }
-  },
-  data() {    return {
-      customerName: 'John Doe',
-      customerEmail: 'john@example.com',
-      chatStatus: 'active',
-      newMessage: '',
-      isTyping: false,
-      typingTimeout: null,
-      messages: [
-        {
-          id: 1,
-          content: 'Halo, saya ingin bertanya tentang bunga mawar merah',
-          timestamp: new Date('2024-01-15T10:30:00'),
-          isFromCustomer: true,
-          quickAction: false
-        },
-        {
-          id: 2,
-          content: 'Halo! Terima kasih telah menghubungi Priangan Florist. Saya akan membantu Anda dengan pertanyaan tentang bunga mawar merah.',
-          timestamp: new Date('2024-01-15T10:31:00'),
-          isFromCustomer: false,
-          quickAction: true
-        },
-        {
-          id: 3,
-          content: 'Apakah bunga mawar merah tersedia untuk pengiriman besok?',
-          timestamp: new Date('2024-01-15T10:32:00'),
-          isFromCustomer: true,
-          quickAction: false
+
+    const loadConversation = async () => {
+      await getConversationById(conversationId)
+      await fetchMessages(conversationId)
+      
+      // Mark customer messages as read when viewing conversation
+      if (currentConversation.value) {
+        await markMessagesAsRead(conversationId, true) // true = mark customer messages as read
+        if (currentConversation.value.status === 'new') {
+          await updateConversationStatus(conversationId, 'in_progress')
+        }      }
+      
+      // Scroll to bottom after loading messages
+      await nextTick();
+      scrollToBottomContainer();
+    };
+
+    const sendMessage = async () => {
+      if (!newMessage.value.trim()) return
+
+      const messageData = {
+        conversation_id: conversationId,
+        message: newMessage.value.trim(),
+        is_from_customer: false
+      }
+
+      const success = await sendMessageToService(messageData)
+      
+      if (success) {
+        newMessage.value = ''
+        
+        // Immediately add message to local state for instant feedback
+        const newMsg = {
+          id: 'temp-' + Date.now(), // Temporary ID
+          conversation_id: conversationId,
+          message: messageData.message,
+          is_from_customer: false,
+          is_read: false,
+          created_at: new Date().toISOString()
         }
-      ],
-      quickResponses: [
-        { id: 1, text: 'Terima kasih telah menghubungi kami!' },
-        { id: 2, text: 'Saya akan mengecek ketersediaan untuk Anda.' },
-        { id: 3, text: 'Produk tersebut tersedia. Apakah ada yang bisa saya bantu lagi?' },
-        { id: 4, text: 'Mohon tunggu sebentar, saya akan mengecek informasinya.' },
-        { id: 5, text: 'Untuk informasi harga dan ketersediaan, silakan lihat katalog kami.' },
-        { id: 6, text: 'Apakah ada pertanyaan lain yang bisa saya bantu?' }
-      ]
-    }
-  },
-  methods: {
-    sendMessage() {
-      if (!this.newMessage.trim()) return;
+          // Add to messages array for immediate display
+        messages.value.push(newMsg);
+          // Scroll to bottom after sending
+        await nextTick();
+        scrollToBottomContainer();
+      }
+    };
+
+    const sendQuickResponse = async (response) => {
+      const messageData = {
+        conversation_id: conversationId,
+        message: response.text,
+        is_from_customer: false
+      }
+
+      const success = await sendMessageToService(messageData)
       
-      const message = {
-        id: Date.now(),
-        content: this.newMessage.trim(),
-        timestamp: new Date(),
-        isFromCustomer: false,
-        quickAction: false
-      };
-      
-      this.messages.push(message);
-      this.newMessage = '';
-      
-      // Scroll to bottom
-      this.$nextTick(() => {
-        this.scrollToBottom();
-      });
-      
-      // Simulate customer typing response (for demo)
-      this.simulateCustomerResponse();
-    },
-    sendQuickResponse(response) {
-      const message = {
-        id: Date.now(),
-        content: response.text,
-        timestamp: new Date(),
-        isFromCustomer: false,
-        quickAction: true
-      };
-      
-      this.messages.push(message);
-      
-      // Scroll to bottom
-      this.$nextTick(() => {
-        this.scrollToBottom();
-      });
-      
-      // Simulate customer response
-      this.simulateCustomerResponse();
-    },
-    simulateCustomerResponse() {
-      // Show typing indicator
-      setTimeout(() => {
-        this.isTyping = true;
-      }, 1000);
-      
-      // Send response
-      setTimeout(() => {
-        this.isTyping = false;
-        const responses = [
-          'Terima kasih atas informasinya!',
-          'Baik, saya mengerti.',
-          'Bisa tolong dijelaskan lebih detail?',
-          'Oke, saya akan mempertimbangkannya.'
-        ];
+      if (success) {
+        // Immediately add message to local state for instant feedback
+        const newMsg = {
+          id: 'temp-' + Date.now(), // Temporary ID
+          conversation_id: conversationId,
+          message: messageData.message,
+          is_from_customer: false,
+          is_read: false,
+          created_at: new Date().toISOString()
+        }
+          // Add to messages array for immediate display
+        messages.value.push(newMsg);
         
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        const message = {
-          id: Date.now(),
-          content: randomResponse,
-          timestamp: new Date(),
-          isFromCustomer: true,
-          quickAction: false
-        };
-        
-        this.messages.push(message);
-        
-        this.$nextTick(() => {
-          this.scrollToBottom();
-        });
-      }, 3000);
-    },
-    handleTyping() {
+        // Scroll to bottom after sending
+        await nextTick();
+        scrollToBottomContainer();
+      }
+    };
+
+    const handleTyping = () => {
       // Clear existing timeout
-      if (this.typingTimeout) {
-        clearTimeout(this.typingTimeout);
+      if (typingTimeout.value) {
+        clearTimeout(typingTimeout.value)
+      }
+        // Set new timeout
+      typingTimeout.value = setTimeout(() => {
+        // Stop typing after 1 second of inactivity
+      }, 1000)
+    };
+
+    const scrollToBottomContainer = () => {
+      if (messagesContainer.value) {
+        scrollToBottom(messagesContainer.value)
+      }
+    };
+
+    const formatTime = (timestamp) => {
+      return formatMessageTime(timestamp);
+    };    const getStatusClass = (status) => {
+      switch (status) {
+        case 'unread':
+          return 'status-badge new';
+        case 'active':
+          return 'status-badge active';
+        case 'closed':
+          return 'status-badge closed';
+        default:
+          return 'status-badge';
+      }
+    };    const closeChat = async () => {
+      const success = await updateConversationStatus(conversationId, 'closed')
+      if (success) {
+        // Conversation will be updated via subscription
+      }
+    };    const reopenChat = async () => {
+      const success = await updateConversationStatus(conversationId, 'in_progress')
+      if (success) {
+        // Conversation will be updated via subscription
+      }
+    };    const confirmDeleteChat = () => {
+      showDeleteModal.value = true;
+    };
+
+    const deleteChat = async () => {
+      try {
+        const success = await deleteConversation(conversationId)
+        if (success) {
+          showDeleteModal.value = false
+          // Navigate back to chat list
+          router.push('/admin/chat-management')
+        }
+      } catch (error) {
+        console.error('Error deleting chat:', error)
+        // Show error message or keep modal open
+      }
+    };
+
+    // Watchers
+    watch(messages, () => {
+      // Auto-scroll when new messages arrive
+      nextTick(() => {
+        scrollToBottomContainer()
+      })
+      
+      // Play notification sound for new customer messages
+      const lastMessage = messages.value[messages.value.length - 1]
+      if (lastMessage && lastMessage.is_from_customer) {
+        playNotificationSound()
+      }
+    }, { deep: true });
+
+    // Lifecycle
+    onMounted(async () => {
+      await loadConversation()
+      
+      // Setup real-time subscription for messages
+      messageSubscription = subscribeToMessages(conversationId, () => {
+        // Refresh messages when realtime update is received
+        console.log('Real-time message update received, refreshing messages...')
+        // Small delay to ensure Supabase has processed the insert
+        setTimeout(() => {
+          fetchMessages(conversationId)
+        }, 100)
+      })
+    })
+
+    onUnmounted(() => {      if (messageSubscription) {
+        messageSubscription.unsubscribe()
       }
       
-      // Set new timeout
-      this.typingTimeout = setTimeout(() => {
-        // Stop typing after 1 second of inactivity
-      }, 1000);
-    },
-    scrollToBottom() {
-      const container = this.$refs.messagesContainer;
-      if (container) {
-        container.scrollTop = container.scrollHeight;
+      if (typingTimeout.value) {
+        clearTimeout(typingTimeout.value);
       }
-    },
-    markAsRead() {
-      this.chatStatus = 'active';
-    },
-    closeChat() {
-      this.chatStatus = 'closed';
-    },
-    getStatusClass(status) {
-      const classes = {
-        'unread': 'status-badge unread',
-        'active': 'status-badge active',
-        'closed': 'status-badge closed'
-      };
-      return classes[status] || 'status-badge';
-    },
-    getStatusText(status) {
-      const texts = {
-        'unread': 'Belum dibaca',
-        'active': 'Aktif',
-        'closed': 'Ditutup'
-      };
-      return texts[status] || status;
-    },
-    formatMessageTime(timestamp) {
-      return timestamp.toLocaleTimeString('id-ID', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    },    loadChatData() {
-      // In real app, load chat data based on this.id
-      // For now, using dummy data
-    },
-    getInitials(name) {
-      return name
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase())
-        .slice(0, 2)
-        .join('');
-    }
-  },
-  mounted() {
-    this.loadChatData();
-    this.scrollToBottom();
-  },
-  beforeUnmount() {
-    if (this.typingTimeout) {
-      clearTimeout(this.typingTimeout);
+    });
+
+    return {
+      // State
+      newMessage,
+      isTyping,
+      messagesContainer,
+      quickResponses,
+      loading,
+      error,
+      showDeleteModal,
+      
+      // Computed
+      customerName,
+      customerEmail,
+      customerPhone,
+      chatStatus,
+      sortedMessages,
+      
+      // Methods
+      sendMessage,
+      sendQuickResponse,
+      handleTyping,
+      formatTime,
+      getStatusClass,
+      getInitials,
+      getStatusText,
+      closeChat,
+      reopenChat,
+      confirmDeleteChat,
+      deleteChat
     }
   }
 }
@@ -387,7 +501,7 @@ export default {
   font-weight: 500;
 }
 
-.status-badge.unread {
+.status-badge.new {
   background-color: #fff7ed;
   color: #fc7839;
 }
@@ -502,15 +616,6 @@ export default {
 .message-text {
   line-height: 1.4;
   word-wrap: break-word;
-}
-
-.quick-action-response {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: 11px;
-  opacity: 0.8;
 }
 
 .typing-indicator .message-content {
@@ -646,6 +751,148 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+/* Delete button and modal styles */
+.delete-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.delete-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  transform: translateY(-1px);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 400px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h4 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 24px;
+  text-align: center;
+}
+
+.warning-icon {
+  margin-bottom: 16px;
+}
+
+.warning-icon i {
+  font-size: 48px;
+  color: #ef4444;
+}
+
+.modal-body p {
+  margin: 12px 0;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.warning-text {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: white;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-delete {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+}
+
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 @keyframes fadeIn {

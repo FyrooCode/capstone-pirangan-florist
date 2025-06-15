@@ -189,222 +189,295 @@
 </template>
 
 <script>
+import { useChatService } from '@/composables/useChatService'
+import { formatTimeAgo, getInitials, getStatusBadgeClass, getStatusText, truncateMessage } from '@/utils/chatHelpers'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+
 export default {
   name: 'AdminChatList',
-  data() {
-    return {
-      searchQuery: '',
-      statusFilter: 'all',
-      itemsPerPage: 10,
-      currentPage: 1,
-      selectAll: false,
-      selectedChats: [],      chats: [
-        // Sample data - in real app this would come from API
-        {
-          id: 1,
-          customer: {
-            name: 'John Doe',
-            email: 'john@example.com'
-          },
-          lastMessage: {
-            content: 'Halo, saya ingin bertanya tentang bunga mawar merah',
-            timestamp: new Date('2024-01-15T10:30:00'),
-            isFromCustomer: true
-          },
-          status: 'unread',
-          totalMessages: 3
-        },
-        {
-          id: 2,
-          customer: {
-            name: 'Jane Smith',
-            email: 'jane@example.com'
-          },
-          lastMessage: {
-            content: 'Terima kasih atas bantuannya!',
-            timestamp: new Date('2024-01-15T09:15:00'),
-            isFromCustomer: true
-          },
-          status: 'active',
-          totalMessages: 8
-        },
-        {
-          id: 3,
-          customer: {
-            name: 'Bob Wilson',
-            email: 'bob@example.com'
-          },
-          lastMessage: {
-            content: 'Baik, chat ini sudah selesai. Terima kasih.',
-            timestamp: new Date('2024-01-14T16:45:00'),
-            isFromCustomer: false
-          },
-          status: 'closed',
-          totalMessages: 12
-        }
-      ],
-      filteredChats: []
-    }
-  },
-  computed: {
-    totalChats() {
-      return this.filteredChats.length;
-    },
-    totalPages() {
-      return Math.ceil(this.totalChats / this.itemsPerPage);
-    },
-    startIndex() {
-      return (this.currentPage - 1) * this.itemsPerPage + 1;
-    },
-    endIndex() {
-      return Math.min(this.currentPage * this.itemsPerPage, this.totalChats);
-    },
-    paginatedChats() {
-      const start = (this.currentPage - 1) * this.itemsPerPage;
-      const end = start + this.itemsPerPage;
-      return this.filteredChats.slice(start, end);
-    },
-    visiblePages() {
-      const pages = [];
-      const start = Math.max(1, this.currentPage - 2);
-      const end = Math.min(this.totalPages, this.currentPage + 2);
+  setup() {
+    const router = useRouter()
+    const {
+      conversations,
+      loading,
+      error,
+      totalConversations,
+      newConversationsCount,
+      inProgressConversationsCount,
+      fetchConversations,
+      updateConversationStatus,
+      bulkUpdateConversationStatus,
+      markMessagesAsRead,
+      subscribeToConversations
+    } = useChatService()
+
+    // Reactive data
+    const searchQuery = ref('')
+    const statusFilter = ref('all')
+    const itemsPerPage = ref(10)
+    const currentPage = ref(1)
+    const selectAll = ref(false)
+    const selectedChats = ref([])
+    const filteredChats = ref([])
+    
+    // Real-time subscription
+    let conversationSubscription = null
+
+    // Computed properties
+    const totalChats = computed(() => filteredChats.value.length)
+    const totalPages = computed(() => Math.ceil(totalChats.value / itemsPerPage.value))
+    const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value + 1)
+    const endIndex = computed(() => Math.min(currentPage.value * itemsPerPage.value, totalChats.value))
+    
+    const paginatedChats = computed(() => {
+      const start = (currentPage.value - 1) * itemsPerPage.value
+      const end = start + itemsPerPage.value
+      return filteredChats.value.slice(start, end)
+    })
+
+    const visiblePages = computed(() => {
+      const pages = []
+      const maxVisible = 5
+      let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
+      let end = Math.min(totalPages.value, start + maxVisible - 1)
+      
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1)
+      }
       
       for (let i = start; i <= end; i++) {
-        pages.push(i);
+        pages.push(i)
       }
-      return pages;
+      return pages
+    })
+
+    // Methods
+    const loadConversations = async () => {
+      await fetchConversations({
+        status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+        search: searchQuery.value || undefined
+      })
+      filterChats()
     }
-  },
-  methods: {
-    filterChats() {
-      let filtered = [...this.chats];
-      
-      // Filter by search query
-      if (this.searchQuery.trim()) {
-        const query = this.searchQuery.toLowerCase();
+
+    const filterChats = () => {
+      let filtered = [...conversations.value]
+
+      // Map Supabase data to component format
+      filtered = filtered.map(conv => ({
+        id: conv.id,
+        customer: {
+          name: conv.customer_name,
+          email: conv.customer_email,
+          phone: conv.customer_phone
+        },
+        lastMessage: {
+          content: conv.last_message || 'No messages yet',
+          timestamp: conv.last_message_at ? new Date(conv.last_message_at) : new Date(conv.created_at),
+          isFromCustomer: true // Default, would need to track this properly
+        },
+        status: mapStatus(conv.status),
+        unreadCount: conv.unread_admin_count,
+        totalMessages: 0, // Would need separate query for this
+        created_at: conv.created_at,
+        updated_at: conv.updated_at
+      }))
+
+      // Apply status filter
+      if (statusFilter.value !== 'all') {
+        if (statusFilter.value === 'unread') {
+          filtered = filtered.filter(chat => chat.unreadCount > 0)
+        } else {
+          filtered = filtered.filter(chat => chat.status === statusFilter.value)
+        }
+      }
+
+      // Apply search filter
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
         filtered = filtered.filter(chat => 
           chat.customer.name.toLowerCase().includes(query) ||
           chat.customer.email.toLowerCase().includes(query) ||
-          chat.lastMessage.content.toLowerCase().includes(query)
-        );
+          (chat.lastMessage.content && chat.lastMessage.content.toLowerCase().includes(query))
+        )
+      }      filteredChats.value = filtered
+      updatePagination()
+    };
+
+    const mapStatus = (supabaseStatus) => {
+      switch (supabaseStatus) {
+        case 'new':
+          return 'unread'
+        case 'in_progress':
+          return 'active'
+        case 'closed':
+          return 'closed'
+        default:
+          return 'unread'
       }
-      
-      // Filter by status
-      if (this.statusFilter !== 'all') {
-        filtered = filtered.filter(chat => chat.status === this.statusFilter);
+    };
+
+    const updatePagination = () => {
+      if (currentPage.value > totalPages.value && totalPages.value > 0) {
+        currentPage.value = totalPages.value
       }
-      
-      this.filteredChats = filtered;
-      this.currentPage = 1;
-    },
-    updatePagination() {
-      this.currentPage = 1;
-    },
-    toggleSelectAll() {
-      if (this.selectAll) {
-        this.selectedChats = this.paginatedChats.map(chat => chat.id);
-      } else {
-        this.selectedChats = [];
-      }
-    },
-    previousPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--;
-      }
-    },
-    nextPage() {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage++;
-      }
-    },
-    goToPage(page) {
-      this.currentPage = page;
-    },
-    getStatusClass(status) {
-      const classes = {
-        'unread': 'block-available available',
-        'active': 'block-available busy',
-        'closed': 'block-available pending'
-      };
-      return classes[status] || 'block-available';
-    },
-    getStatusText(status) {
-      const texts = {
-        'unread': 'Belum dibaca',
-        'active': 'Aktif',
-        'closed': 'Ditutup'
-      };
-      return texts[status] || status;
-    },
-    truncateMessage(message, length = 50) {
-      if (message.length <= length) return message;
-      return message.substring(0, length) + '...';
-    },
-    formatTime(timestamp) {
-      const now = new Date();
-      const diff = now - timestamp;
-      const minutes = Math.floor(diff / 60000);
-      const hours = Math.floor(diff / 3600000);
-      const days = Math.floor(diff / 86400000);
-      
-      if (minutes < 60) {
-        return `${minutes} menit lalu`;
-      } else if (hours < 24) {
-        return `${hours} jam lalu`;
-      } else if (days < 7) {
-        return `${days} hari lalu`;
-      } else {
-        return timestamp.toLocaleDateString('id-ID');
-      }
-    },
-    markAsRead(chat) {
-      chat.status = 'active';
-      this.filterChats();
-    },
-    closeChat(chat) {
-      chat.status = 'closed';
-      this.filterChats();
-    },
-    markSelectedAsRead() {
-      this.selectedChats.forEach(chatId => {
-        const chat = this.chats.find(c => c.id === chatId);
-        if (chat && chat.status === 'unread') {
-          chat.status = 'active';
-        }
-      });
-      this.selectedChats = [];
-      this.selectAll = false;
-      this.filterChats();
-    },    closeSelectedChats() {
-      this.selectedChats.forEach(chatId => {
-        const chat = this.chats.find(c => c.id === chatId);
-        if (chat && chat.status !== 'closed') {
-          chat.status = 'closed';
-        }
-      });
-      this.selectedChats = [];
-      this.selectAll = false;
-      this.filterChats();
-    },    openChat(chat) {
-      // Navigate to chat conversation
-      this.$router.push({ name: 'chat conversation', params: { id: chat.id } });
-    },
-    getInitials(name) {
-      return name
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase())
-        .slice(0, 2)
-        .join('');
     }
-  },
-  mounted() {
-    this.filterChats();
-  },
-  watch: {
-    selectedChats() {
-      this.selectAll = this.selectedChats.length === this.paginatedChats.length && this.paginatedChats.length > 0;
+
+    const openChat = (chat) => {
+      if (chat.status === 'unread') {
+        markAsRead(chat)
+      }
+      router.push({ name: 'chat conversation', params: { id: chat.id } })
     }
-  }
+
+    const markAsRead = async (chat) => {
+      const success = await markMessagesAsRead(chat.id, true) // true = mark customer messages as read
+      if (success) {
+        await updateConversationStatus(chat.id, 'in_progress')
+        loadConversations()
+      }
+    }
+
+    const closeChat = async (chat) => {
+      const success = await updateConversationStatus(chat.id, 'closed')
+      if (success) {
+        loadConversations()
+      }
+    }
+
+    const toggleSelectAll = () => {
+      if (selectAll.value) {
+        selectedChats.value = paginatedChats.value.map(chat => chat.id)
+      } else {
+        selectedChats.value = []
+      }
+    }
+
+    const markSelectedAsRead = async () => {
+      if (selectedChats.value.length === 0) return
+      
+      const promises = selectedChats.value.map(async (chatId) => {
+        await markMessagesAsRead(chatId, true)
+        return updateConversationStatus(chatId, 'in_progress')
+      })
+      
+      await Promise.all(promises)
+      selectedChats.value = []
+      selectAll.value = false
+      loadConversations()
+    }
+
+    const closeSelectedChats = async () => {
+      if (selectedChats.value.length === 0) return
+      
+      const success = await bulkUpdateConversationStatus(selectedChats.value, 'closed')
+      if (success) {
+        selectedChats.value = []
+        selectAll.value = false
+        loadConversations()
+      }
+    }
+
+    const goToPage = (page) => {
+      currentPage.value = page
+    }
+
+    const nextPage = () => {
+      if (currentPage.value < totalPages.value) {
+        currentPage.value++
+      }
+    }
+
+    const previousPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value--
+      }
+    }
+
+    const formatTime = (timestamp) => {
+      return formatTimeAgo(timestamp.toISOString())
+    }
+
+    const getStatusClass = (status) => {
+      switch (status) {
+        case 'unread':
+          return 'status-badge new'
+        case 'active':
+          return 'status-badge active'
+        case 'closed':
+          return 'status-badge closed'
+        default:
+          return 'status-badge'
+      }
+    }
+
+    // Watchers
+    watch([searchQuery, statusFilter], () => {
+      currentPage.value = 1
+      filterChats()
+    })
+
+    watch(selectedChats, () => {
+      selectAll.value = selectedChats.value.length === paginatedChats.value.length && paginatedChats.value.length > 0
+    }, { deep: true })
+
+    // Lifecycle
+    onMounted(async () => {
+      await loadConversations()
+      
+      // Setup real-time subscription
+      conversationSubscription = subscribeToConversations(() => {
+        loadConversations()
+      })
+    })
+
+    onUnmounted(() => {
+      if (conversationSubscription) {
+        conversationSubscription.unsubscribe()
+      }
+    })
+
+    return {
+      // State
+      searchQuery,
+      statusFilter,
+      itemsPerPage,
+      currentPage,
+      selectAll,
+      selectedChats,
+      filteredChats,
+      loading,
+      error,
+      
+      // Computed
+      totalChats,
+      totalPages,
+      startIndex,
+      endIndex,
+      paginatedChats,
+      visiblePages,
+      
+      // Methods
+      filterChats,
+      updatePagination,
+      openChat,
+      markAsRead,
+      closeChat,
+      toggleSelectAll,
+      markSelectedAsRead,
+      closeSelectedChats,
+      goToPage,
+      nextPage,
+      previousPage,
+      formatTime,
+      getStatusClass,
+      getInitials,
+      truncateMessage,
+      
+      // Utils
+      getStatusText
+    }  }
 }
 </script>
 
