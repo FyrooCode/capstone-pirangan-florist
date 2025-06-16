@@ -325,6 +325,47 @@ const router = createRouter({
             requiresAdmin: true
           }
         },
+        {
+          path: 'list-slider',
+          name: 'list slider',
+          component: () => import('@/views/admin/AdminSliderListView.vue'),
+          meta: {
+            title: 'List Slider | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'tambah-slider',
+          name: 'tambah slider',
+          component: () => import('@/views/admin/AdminAddSliderView.vue'),
+          meta: {
+            title: 'Tambah Slider | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'edit-slider/:id',
+          name: 'edit slider',
+          component: () => import('@/views/admin/AdminEditSliderView.vue'),
+          props: true,
+          meta: {
+            title: 'Edit Slider | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'featured-products',
+          name: 'featured products',
+          component: () => import('@/views/admin/AdminFeaturedProductView.vue'),
+          meta: {
+            title: 'Featured Products | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
       ],
     },
 

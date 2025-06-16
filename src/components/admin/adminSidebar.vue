@@ -87,6 +87,22 @@ export default {
           icon: '<i class="icon-message-circle"></i>',
           routeName: 'chat management',
         },
+        {
+          title: 'Slider',
+          link: 'javascript:void(0);',
+          icon: '<i class="icon-image"></i>',
+          open: undefined,
+          children: [
+            { title: 'Semua Slider', route: 'list slider' },
+            { title: 'Tambah Slider', route: 'tambah slider' },
+          ],
+        },
+        {
+          title: 'Featured Products',
+          link: 'javascript:void(0);',
+          icon: '<i class="icon-star"></i>',
+          routeName: 'featured products',
+        },
       ],
     };
   },

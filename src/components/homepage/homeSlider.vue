@@ -15,7 +15,43 @@
       data-speed="1000"
     >
       <div class="swiper-wrapper">
-        <div class="swiper-slide" lazy="true">
+        <div v-for="slider in activeSliders" :key="slider.id" class="swiper-slide" lazy="true">
+          <div class="wrap-slider">
+            <img
+              class="lazyload"
+              :data-src="slider.image_url"
+              :src="slider.image_url"
+              :alt="slider.title"
+            />
+            <div class="box-content text-center">
+              <div class="container">
+                <h1 class="fade-item fade-item-1 text-white heading">
+                  {{ slider.title }}
+                </h1>
+                <p v-if="slider.description" class="fade-item fade-item-2 text-white mb-3">
+                  {{ slider.description }}
+                </p>
+                <a
+                  v-if="slider.link_url"
+                  :href="slider.link_url"
+                  class="fade-item fade-item-3 tf-btn btn-light-icon animate-hover-btn btn-xl radius-60 text_green-1"
+                >
+                  <span>Lihat Koleksi</span><i class="icon icon-arrow-right"></i>
+                </a>
+                <a
+                  v-else
+                  href="/katalog"
+                  class="fade-item fade-item-3 tf-btn btn-light-icon animate-hover-btn btn-xl radius-60 text_green-1"
+                >
+                  <span>Lihat Koleksi</span><i class="icon icon-arrow-right"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fallback slides if no active sliders -->
+        <div v-if="activeSliders.length === 0" class="swiper-slide" lazy="true">
           <div class="wrap-slider">
             <img
               class="lazyload"
@@ -29,49 +65,9 @@
                   Rangkaian Bunga Terindah untuk Setiap Momen
                 </h1>
                 <a
-                  href="shop-collection-list.html"
+                  href="/katalog"
                   class="fade-item fade-item-3 tf-btn btn-light-icon animate-hover-btn btn-xl radius-60 text_green-1"
-                  ><span>Lihat Koleksi</span><i class="icon icon-arrow-right"></i
-                ></a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="swiper-slide" lazy="true">
-          <div class="wrap-slider">
-            <img
-              class="lazyload"
-              data-src="/user/images/slider/hero2.jpg"
-              src="/user/images/slider/hero2.jpg"
-              alt="Colorful Tulip Garden"
-            />
-            <div class="box-content text-center">
-              <div class="container">
-                <h1 class="fade-item fade-item-1 text-white heading">Warnai Hari Spesial dengan Bunga Segar</h1>
-                <a
-                  href="shop-collection-list.html"
-                  class="fade-item fade-item-3 tf-btn btn-light-icon animate-hover-btn btn-xl radius-60 text_green-1"
-                  ><span>Pesan Sekarang</span><i class="icon icon-arrow-right"></i
-                ></a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="swiper-slide" lazy="true">
-          <div class="wrap-slider">
-            <img
-              class="lazyload"
-              data-src="/user/images/slider/hero3.jpg"
-              src="/user/images/slider/hero3.jpg"
-              alt="Pink Tulips Spring Collection"
-            />
-            <div class="box-content text-center">
-              <div class="container">
-                <h1 class="fade-item fade-item-1 text-white">Hadiah Bunga untuk Orang Tersayang</h1>
-                <a
-                  href="shop-collection-list.html"
-                  class="fade-item fade-item-3 tf-btn btn-light-icon animate-hover-btn btn-xl radius-60 text_green-1"
-                  ><span>Jelajahi Bunga</span><i class="icon icon-arrow-right"></i
+                ><span>Lihat Koleksi</span><i class="icon icon-arrow-right"></i
                 ></a>
               </div>
             </div>
@@ -87,3 +83,40 @@
   </section>
   <!-- /Slider -->
 </template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { supabase } from '../../utils/supabase'
+
+const activeSliders = ref([])
+const isLoading = ref(true)
+
+const fetchActiveSliders = async () => {
+  try {
+    isLoading.value = true
+    
+    const { data, error } = await supabase
+      .from('slider')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching sliders:', error)
+      return
+    }
+
+    activeSliders.value = data || []
+    
+  } catch (error) {
+    console.error('Error fetching sliders:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchActiveSliders()
+})
+</script>

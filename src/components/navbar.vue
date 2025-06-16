@@ -4,49 +4,49 @@
     <div class="wrap-announcement-bar">
       <div class="box-sw-announcement-bar run-reverse">
         <div class="announcement-bar-item">
-          <p>FREE SHIPPING AND RETURNS</p>
+          <p>BUNGA SEGAR SETIAP HARI - RANGKAIAN CANTIK UNTUK ANDA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>NEW SEASON, NEW STYLES: FASHION SALE YOU CAN'T MISS</p>
+          <p>TERSEDIA BUNGA UNTUK WISUDA, WEDDING & ANNIVERSARY</p>
         </div>
         <div class="announcement-bar-item">
-          <p>LIMITED TIME OFFER: FASHION SALE YOU CAN'T RESIST</p>
+          <p>BUKET SPESIAL UNTUK MOMENT ISTIMEWA ANDA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>FREE SHIPPING AND RETURNS</p>
+          <p>PESAN SEKARANG - SAME DAY DELIVERY TERSEDIA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>NEW SEASON, NEW STYLES: FASHION SALE YOU CAN'T MISS</p>
+          <p>KOLEKSI BUNGA PAPAN & STANDING FLOWER TERLENGKAP</p>
         </div>
         <div class="announcement-bar-item">
-          <p>LIMITED TIME OFFER: FASHION SALE YOU CAN'T RESIST</p>
+          <p>BUNGA SEGAR SETIAP HARI - RANGKAIAN CANTIK UNTUK ANDA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>FREE SHIPPING AND RETURNS</p>
+          <p>TERSEDIA BUNGA UNTUK WISUDA, WEDDING & ANNIVERSARY</p>
         </div>
         <div class="announcement-bar-item">
-          <p>NEW SEASON, NEW STYLES: FASHION SALE YOU CAN'T MISS</p>
+          <p>BUKET SPESIAL UNTUK MOMENT ISTIMEWA ANDA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>LIMITED TIME OFFER: FASHION SALE YOU CAN'T RESIST</p>
+          <p>PESAN SEKARANG - SAME DAY DELIVERY TERSEDIA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>FREE SHIPPING AND RETURNS</p>
+          <p>KOLEKSI BUNGA PAPAN & STANDING FLOWER TERLENGKAP</p>
         </div>
         <div class="announcement-bar-item">
-          <p>NEW SEASON, NEW STYLES: FASHION SALE YOU CAN'T MISS</p>
+          <p>BUNGA SEGAR SETIAP HARI - RANGKAIAN CANTIK UNTUK ANDA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>LIMITED TIME OFFER: FASHION SALE YOU CAN'T RESIST</p>
+          <p>TERSEDIA BUNGA UNTUK WISUDA, WEDDING & ANNIVERSARY</p>
         </div>
         <div class="announcement-bar-item">
-          <p>FREE SHIPPING AND RETURNS</p>
+          <p>BUKET SPESIAL UNTUK MOMENT ISTIMEWA ANDA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>NEW SEASON, NEW STYLES: FASHION SALE YOU CAN'T MISS</p>
+          <p>PESAN SEKARANG - SAME DAY DELIVERY TERSEDIA</p>
         </div>
         <div class="announcement-bar-item">
-          <p>LIMITED TIME OFFER: FASHION SALE YOU CAN'T RESIST</p>
+          <p>KOLEKSI BUNGA PAPAN & STANDING FLOWER TERLENGKAP</p>
         </div>
       </div>
     </div>
