@@ -5,13 +5,13 @@
 
   <HomeFeaturedProduct></HomeFeaturedProduct>
 
-  <HomeBanner></HomeBanner>
+  <!-- <HomeBanner></HomeBanner> -->
 
-  <HomeIconBox></HomeIconBox>
+  <!-- <HomeIconBox></HomeIconBox> -->
 
-  <HomeCollection></HomeCollection>
+  <!-- <HomeCollection></HomeCollection> -->
 
-  <HomeGallery></HomeGallery>
+  <!-- <HomeGallery></HomeGallery> -->
 
 
 </template>
