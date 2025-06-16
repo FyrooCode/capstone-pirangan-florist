@@ -56,7 +56,8 @@
                                 </div>
                             </form>
                         </div>
-                        <a class="tf-button style-1 w208" href="new-category.html"><i class="icon-plus"></i>Add new</a>
+                        <router-link class="tf-button style-1 w208" to="/admin/tambah-kategori"><i
+                                class="icon-plus"></i>Add new</router-link>
                     </div>
                     <div class="wg-table table-all-category">
                         <ul class="table-title flex gap20 mb-14">
@@ -135,17 +136,77 @@
         </div>
         <!-- /bottom-page -->
     </div> <!-- /main-content -->
+
+    <!-- Alert Modal -->
+    <AdminAlertModal :isVisible="modal.isVisible" :type="modal.type" :title="modal.title" :message="modal.message"
+        :confirmText="modal.confirmText" :cancelText="modal.cancelText" :showCancel="modal.showCancel"
+        :isLoading="modal.isLoading" @confirm="handleModalConfirm" @cancel="handleModalCancel" @close="closeModal" />
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { supabase } from '../../utils/supabase';
+import AdminAlertModal from './adminAlertModal.vue';
+
+// Add router
+const router = useRouter();
 
 // Reactive data
 const categories = ref([]);
 const searchQuery = ref('');
 const isLoading = ref(false);
 const errorMessage = ref('');
+
+// Modal state
+const modal = ref({
+    isVisible: false,
+    type: 'info',
+    title: 'Alert',
+    message: '',
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+    isLoading: false
+});
+
+// Store category to be deleted
+const categoryToDelete = ref(null);
+
+// Function to show modal
+const showModal = (type, title, message, confirmText = 'OK', showCancel = false, cancelText = 'Cancel') => {
+    modal.value = {
+        isVisible: true,
+        type,
+        title,
+        message,
+        confirmText,
+        cancelText,
+        showCancel,
+        isLoading: false
+    };
+};
+
+// Function to close modal
+const closeModal = () => {
+    modal.value.isVisible = false;
+    categoryToDelete.value = null;
+};
+
+// Function to handle modal confirm
+const handleModalConfirm = () => {
+    if (modal.value.type === 'confirm' && categoryToDelete.value) {
+        // Execute delete operation
+        executeDelete();
+    } else {
+        closeModal();
+    }
+};
+
+// Function to handle modal cancel
+const handleModalCancel = () => {
+    closeModal();
+};
 
 // Computed property for filtered categories
 const filteredCategories = computed(() => {
@@ -215,38 +276,59 @@ const viewCategory = (category) => {
 
 const editCategory = (category) => {
     console.log('Edit category:', category);
-    // TODO: Implement edit functionality
-    alert(`Edit category: ${category.nama_kategori}`);
+    // Navigate to edit page
+    router.push(`/admin/edit-kategori/${category.id}`);
 };
 
-const deleteCategory = async (category) => {
-    if (!confirm(`Are you sure you want to delete "${category.nama_kategori}"?`)) {
-        return;
-    }
+const deleteCategory = (category) => {
+    categoryToDelete.value = category;
+    showModal(
+        'confirm',
+        'Delete Category',
+        `Are you sure you want to delete "${category.nama_kategori}"? This action cannot be undone.`,
+        'Delete',
+        true,
+        'Cancel'
+    );
+};
+
+// Function to execute the delete
+const executeDelete = async () => {
+    if (!categoryToDelete.value) return;
+
+    modal.value.isLoading = true;
 
     try {
         // Check if category has products
         const { count } = await supabase
             .from('produk')
             .select('*', { count: 'exact', head: true })
-            .eq('kategori_id', category.id);
+            .eq('kategori_id', categoryToDelete.value.id);
 
         if (count > 0) {
-            alert(`Cannot delete category "${category.nama_kategori}" because it has ${count} product(s) associated with it.`);
+            closeModal();
+            showModal(
+                'error',
+                'Cannot Delete Category',
+                `Cannot delete category "${categoryToDelete.value.nama_kategori}" because it has ${count} product(s) associated with it.`
+            );
             return;
         }
 
+        // Delete the category
         const { error } = await supabase
             .from('kategori')
             .delete()
-            .eq('id', category.id);
+            .eq('id', categoryToDelete.value.id);
 
         if (error) throw error;
 
-        alert('Category deleted successfully!');
+        closeModal();
+        showModal('success', 'Success', 'Category deleted successfully!');
         fetchCategories(); // Refresh the list
     } catch (error) {
-        alert(`Error deleting category: ${error.message}`);
+        closeModal();
+        showModal('error', 'Error', `Error deleting category: ${error.message}`);
         console.error('Error:', error);
     }
 };

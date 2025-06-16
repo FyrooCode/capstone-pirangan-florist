@@ -33,7 +33,8 @@
                 <div class="wg-box">
                     <div class="title-box">
                         <i class="icon-coffee"></i>
-                        <div class="body-text">Tips pencarian berdasarkan ID Produk: Setiap produk disediakan dengan ID unik,
+                        <div class="body-text">Tips pencarian berdasarkan ID Produk: Setiap produk disediakan dengan ID
+                            unik,
                             yang dapat Anda andalkan untuk menemukan produk yang tepat sesuai kebutuhan.</div>
                     </div>
                     <div class="flex items-center justify-between gap10 flex-wrap">
@@ -41,10 +42,10 @@
                             <div class="show">
                                 <div class="text-tiny">Menampilkan</div>
                                 <div class="select">
-                                    <select class="">
-                                        <option>10</option>
-                                        <option>20</option>
-                                        <option>30</option>
+                                    <select v-model="itemsPerPage" @change="currentPage = 1">
+                                        <option :value="10">10</option>
+                                        <option :value="20">20</option>
+                                        <option :value="30">30</option>
                                     </select>
                                 </div>
                                 <div class="text-tiny">entri</div>
@@ -59,7 +60,8 @@
                                 </div>
                             </form>
                         </div>
-                        <a class="tf-button style-1 w208" href="add-product.html"><i class="icon-plus"></i>Tambah Baru</a>
+                        <router-link class="tf-button style-1 w208" to="/admin/tambah-produk"><i
+                                class="icon-plus"></i>Tambah Baru</router-link>
                     </div>
                     <div class="wg-table table-product-list">
                         <ul class="table-title flex gap20 mb-14">
@@ -95,7 +97,7 @@
                             <li v-else-if="products.length === 0" class="wg-product item-row gap20">
                                 <div class="body-text">Tidak ada produk ditemukan.</div>
                             </li>
-                            <li v-else v-for="product in filteredProducts" :key="product.id"
+                            <li v-else v-for="product in paginatedProducts" :key="product.id"
                                 class="wg-product item-row gap20">
                                 <div class="name">
                                     <div class="image">
@@ -112,7 +114,7 @@
                                     </div>
                                 </div>
                                 <div class="body-text text-main-dark mt-4">#{{ product.id }}</div>
-                                <div class="body-text text-main-dark mt-4">Rp {{ formatPrice(product.harga) }}</div>
+                                <div class="body-text text-main-dark mt-4">{{ formatPrice(product.harga) }}</div>
                                 <div class="body-text text-main-dark mt-4">{{ product.stok }}</div>
                                 <div class="body-text text-main-dark mt-4">0</div> <!-- Sales data placeholder -->
                                 <div>
@@ -136,10 +138,28 @@
                     </div>
                     <div class="divider"></div>
                     <div class="flex items-center justify-between flex-wrap gap10">
-                        <div class="text-tiny">Menampilkan {{ filteredProducts.length }} dari {{ products.length }} entri
-                        </div>
+                        <div class="text-tiny">Menampilkan {{ startIndex + 1 }}-{{ endIndex }} dari {{
+                            filteredProducts.length }} entri (Total: {{ products.length }})</div>
                         <div v-if="errorMessage" class="text-tiny" style="color: red;">{{ errorMessage }}</div>
-                        <!-- Pagination can be implemented later for large datasets -->
+
+                        <!-- Pagination -->
+                        <ul class="wg-pagination" v-if="totalPages > 1">
+                            <li>
+                                <a href="#" @click.prevent="goToPage(currentPage - 1)"
+                                    :class="{ disabled: currentPage === 1 }">
+                                    <i class="icon-chevron-left"></i>
+                                </a>
+                            </li>
+                            <li v-for="page in visiblePages" :key="page" :class="{ active: page === currentPage }">
+                                <a href="#" @click.prevent="goToPage(page)">{{ page }}</a>
+                            </li>
+                            <li>
+                                <a href="#" @click.prevent="goToPage(currentPage + 1)"
+                                    :class="{ disabled: currentPage === totalPages }">
+                                    <i class="icon-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
                 <!-- /product-list -->
@@ -154,17 +174,46 @@
         </div>
         <!-- /bottom-page -->
     </div>
+
+    <!-- Alert Modal -->
+    <AdminAlertModal :isVisible="modal.isVisible" :type="modal.type" :title="modal.title" :message="modal.message"
+        :confirmText="modal.confirmText" :cancelText="modal.cancelText" :showCancel="modal.showCancel"
+        :isLoading="modal.isLoading" @confirm="handleModalConfirm" @cancel="handleModalCancel" @close="closeModal" />
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { supabase } from '../../utils/supabase';
+import AdminAlertModal from './adminAlertModal.vue';
+
+// Router
+const router = useRouter();
 
 // Reactive data
 const products = ref([]);
 const searchQuery = ref('');
 const isLoading = ref(false);
 const errorMessage = ref('');
+
+// Pagination
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+
+// Modal state
+const modal = ref({
+    isVisible: false,
+    type: 'info',
+    title: 'Alert',
+    message: '',
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+    isLoading: false
+});
+
+// Store product to be deleted
+const productToDelete = ref(null);
 
 // Computed property for filtered products
 const filteredProducts = computed(() => {
@@ -179,6 +228,82 @@ const filteredProducts = computed(() => {
         (product.kategori && product.kategori.nama_kategori.toLowerCase().includes(query))
     );
 });
+
+// Pagination computed properties
+const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage.value));
+
+const paginatedProducts = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return filteredProducts.value.slice(start, end);
+});
+
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value);
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage.value, filteredProducts.value.length));
+
+const visiblePages = computed(() => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, currentPage.value - delta); i <= Math.min(totalPages.value - 1, currentPage.value + delta); i++) {
+        range.push(i);
+    }
+
+    if (currentPage.value - delta > 2) {
+        rangeWithDots.push(1, '...');
+    } else {
+        rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage.value + delta < totalPages.value - 1) {
+        rangeWithDots.push('...', totalPages.value);
+    } else {
+        rangeWithDots.push(totalPages.value);
+    }
+
+    return rangeWithDots.filter((item, index, arr) => arr.indexOf(item) === index && totalPages.value > 1);
+});
+
+// Modal functions
+const showModal = (type, title, message, confirmText = 'OK', showCancel = false, cancelText = 'Cancel') => {
+    modal.value = {
+        isVisible: true,
+        type,
+        title,
+        message,
+        confirmText,
+        cancelText,
+        showCancel,
+        isLoading: false
+    };
+};
+
+const closeModal = () => {
+    modal.value.isVisible = false;
+    productToDelete.value = null;
+};
+
+const handleModalConfirm = () => {
+    if (modal.value.type === 'confirm' && productToDelete.value) {
+        executeDelete();
+    } else {
+        closeModal();
+    }
+};
+
+const handleModalCancel = () => {
+    closeModal();
+};
+
+// Pagination functions
+const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+    }
+};
 
 // Fetch products from Supabase
 const fetchProducts = async () => {
@@ -216,13 +341,15 @@ const fetchProducts = async () => {
 
 // Search handler
 const handleSearch = () => {
-    // The filtering is handled by the computed property
-    // This function can be used for additional search logic if needed
+    // Reset to first page when searching
+    currentPage.value = 1;
 };
 
 // Utility functions
 const formatPrice = (price) => {
     return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(price);
@@ -240,20 +367,31 @@ const formatDate = (dateString) => {
 // Product actions
 const viewProduct = (product) => {
     console.log('View product:', product);
-    // TODO: Implement view functionality
-    alert(`Melihat produk: ${product.nama_produk}`);
+    router.push(`/detail-produk/${product.id}`);
 };
 
 const editProduct = (product) => {
     console.log('Edit product:', product);
-    // TODO: Implement edit functionality
-    alert(`Edit produk: ${product.nama_produk}`);
+    router.push(`/admin/edit-produk/${product.id}`);
 };
 
 const deleteProduct = async (product) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus "${product.nama_produk}"?`)) {
-        return;
-    }
+    productToDelete.value = product;
+    showModal(
+        'confirm',
+        'Konfirmasi Hapus',
+        `Apakah Anda yakin ingin menghapus produk "${product.nama_produk}"? Tindakan ini tidak dapat dibatalkan.`,
+        'Hapus',
+        true,
+        'Batal'
+    );
+};
+
+const executeDelete = async () => {
+    if (!productToDelete.value) return;
+
+    modal.value.isLoading = true;
+    const product = productToDelete.value;
 
     try {
         // Delete associated images from storage first
@@ -290,16 +428,87 @@ const deleteProduct = async (product) => {
 
         if (error) throw error;
 
-        alert('Produk berhasil dihapus!');
+        closeModal();
+        showModal('success', 'Berhasil', 'Produk berhasil dihapus!');
         fetchProducts(); // Refresh the list
     } catch (error) {
-        alert(`Kesalahan saat menghapus produk: ${error.message}`);
+        modal.value.isLoading = false;
+        showModal('error', 'Error', `Kesalahan saat menghapus produk: ${error.message}`);
         console.error('Error:', error);
     }
 };
+
+// Watch for search query changes and reset pagination
+watch(searchQuery, (newValue, oldValue) => {
+    if (newValue !== oldValue) {
+        currentPage.value = 1;
+    }
+});
 
 // Load products when component mounts
 onMounted(() => {
     fetchProducts();
 });
 </script>
+
+<style scoped>
+.wg-pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+}
+
+.wg-pagination li {
+    display: flex;
+}
+
+.wg-pagination li a {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    color: #666;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+}
+
+.wg-pagination li a:hover:not(.disabled) {
+    background-color: #f5f5f5;
+    border-color: #999;
+}
+
+.wg-pagination li.active a {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.wg-pagination li a.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.existing-images,
+.new-images {
+    margin-top: 16px;
+}
+
+.item {
+    position: relative;
+    display: inline-block;
+}
+
+.item button {
+    transition: all 0.2s ease;
+}
+
+.item button:hover {
+    background: rgba(255, 0, 0, 1) !important;
+}
+</style>

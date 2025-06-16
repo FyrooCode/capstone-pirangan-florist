@@ -1,31 +1,20 @@
 <template>
 
-    
+
     <shopFilter @sortChanged="applySorting"></shopFilter>
-    
+
     <!-- Filter Component -->
-    <filterComponent 
-        :categories="categories"
-        :products="products"
-        :isLoadingCategories="isLoadingCategories"
-        :selectedCategoryId="selectedCategoryId"
-        :availabilityFilter="availabilityFilter"
-        :priceRange="priceRange"
-        @categoryChanged="handleCategoryChange"
-        @availabilityChanged="handleAvailabilityChange"
-        @priceRangeChanged="handlePriceRangeChange"
-    />
+    <filterComponent :categories="categories" :products="products" :isLoadingCategories="isLoadingCategories"
+        :selectedCategoryId="selectedCategoryId" :availabilityFilter="availabilityFilter" :priceRange="priceRange"
+        @categoryChanged="handleCategoryChange" @availabilityChanged="handleAvailabilityChange"
+        @priceRangeChanged="handlePriceRangeChange" />
 
     <!-- Quick Add Modal -->
-    <modalQuickAdd 
-        :selectedProduct="selectedProductForQuickAdd" 
-        @addToCart="handleAddToCartFromModal"
+    <modalQuickAdd :selectedProduct="selectedProductForQuickAdd" @addToCart="handleAddToCartFromModal"
         @addToWishlist="addToWishlist" />
 
     <!-- Quick View Modal -->
-    <modalQuickView 
-        :selectedProduct="selectedProductForQuickView" 
-        @addToCart="handleAddToCartFromModal"
+    <modalQuickView :selectedProduct="selectedProductForQuickView" @addToCart="handleAddToCartFromModal"
         @addToWishlist="addToWishlist" />
 
     <div class="tf-row-flex">
@@ -52,14 +41,11 @@
                                 <div v-if="isImageLoading(product.image_urls[0])" class="image-loading">
                                     <div class="spinner"></div>
                                 </div>
-                                
+
                                 <!-- Optimized image with lazy loading -->
-                                <img 
-                                    :data-src="getOptimizedImageUrl(product.image_urls[0])" 
-                                    :src="getOptimizedImageUrl(product.image_urls[0])" 
-                                    :alt="product.nama_produk"
-                                    class="lazyload img-product"
-                                    loading="lazy"
+                                <img :data-src="getOptimizedImageUrl(product.image_urls[0])"
+                                    :src="getOptimizedImageUrl(product.image_urls[0])" :alt="product.nama_produk"
+                                    class="lazyload img-product" loading="lazy"
                                     @load="handleImageLoad(product.image_urls[0])"
                                     @error="handleImageError(product.image_urls[0], $event)"
                                     style="transition: none !important; transform: none !important;">
@@ -113,14 +99,11 @@
                                 <div v-if="isImageLoading(product.image_urls[0])" class="image-loading">
                                     <div class="spinner"></div>
                                 </div>
-                                
+
                                 <!-- Optimized image with lazy loading -->
-                                <img 
-                                    :data-src="getOptimizedImageUrl(product.image_urls[0])" 
-                                    :src="getOptimizedImageUrl(product.image_urls[0])" 
-                                    :alt="product.nama_produk"
-                                    class="lazyload img-product"
-                                    loading="lazy"
+                                <img :data-src="getOptimizedImageUrl(product.image_urls[0])"
+                                    :src="getOptimizedImageUrl(product.image_urls[0])" :alt="product.nama_produk"
+                                    class="lazyload img-product" loading="lazy"
                                     @load="handleImageLoad(product.image_urls[0])"
                                     @error="handleImageError(product.image_urls[0], $event)"
                                     style="transition: none !important; transform: none !important;">
@@ -165,45 +148,50 @@
                 <ul class="wg-pagination tf-pagination-list justify-content-center">
                     <!-- First page -->
                     <li v-if="currentPage > 1">
-                        <a href="#" @click.prevent="goToFirstPage" class="pagination-link animate-hover-btn" aria-label="First page">
+                        <a href="#" @click.prevent="goToFirstPage" class="pagination-link animate-hover-btn"
+                            aria-label="First page">
                             <i class="icon icon-arrow-left"></i><i class="icon icon-arrow-left"></i>
                         </a>
                     </li>
-                    
+
                     <!-- Previous page -->
                     <li v-if="currentPage > 1">
-                        <a href="#" @click.prevent="goToPreviousPage" class="pagination-link animate-hover-btn" aria-label="Previous page">
+                        <a href="#" @click.prevent="goToPreviousPage" class="pagination-link animate-hover-btn"
+                            aria-label="Previous page">
                             <i class="icon icon-arrow-left"></i>
                         </a>
                     </li>
-                    
+
                     <!-- Page numbers -->
                     <li v-for="page in visiblePages" :key="page" :class="{ active: page === currentPage }">
-                        <a href="#" @click.prevent="changePage(page)" class="pagination-link" :class="{ 'animate-hover-btn': page !== currentPage }">
+                        <a href="#" @click.prevent="changePage(page)" class="pagination-link"
+                            :class="{ 'animate-hover-btn': page !== currentPage }">
                             {{ page }}
                         </a>
                     </li>
-                    
+
                     <!-- Next page -->
                     <li v-if="currentPage < totalPages">
-                        <a href="#" @click.prevent="goToNextPage" class="pagination-link animate-hover-btn" aria-label="Next page">
+                        <a href="#" @click.prevent="goToNextPage" class="pagination-link animate-hover-btn"
+                            aria-label="Next page">
                             <i class="icon icon-arrow-right"></i>
                         </a>
                     </li>
-                    
+
                     <!-- Last page -->
                     <li v-if="currentPage < totalPages">
-                        <a href="#" @click.prevent="goToLastPage" class="pagination-link animate-hover-btn" aria-label="Last page">
+                        <a href="#" @click.prevent="goToLastPage" class="pagination-link animate-hover-btn"
+                            aria-label="Last page">
                             <i class="icon icon-arrow-right"></i><i class="icon icon-arrow-right"></i>
                         </a>
                     </li>
                 </ul>
-                
+
                 <!-- Pagination info -->
                 <div class="pagination-info text-center mt-3">
                     <span class="text-muted">
-                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to 
-                        {{ Math.min(currentPage * itemsPerPage, totalProducts) }} of 
+                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+                        {{ Math.min(currentPage * itemsPerPage, totalProducts) }} of
                         {{ totalProducts }} products
                     </span>
                 </div>
@@ -260,8 +248,8 @@
                                         </svg>
                                     </div>
                                     <div class="iconbox-content">
-                                        <h4 class="iconbox-title">Gratis ongkir</h4>
-                                        <p class="iconbox-desc">Gratis ongkir untuk semua pesanan</p>
+                                        <h4 class="iconbox-title">Flat Ongkir</h4>
+                                        <p class="iconbox-desc">Ongkir flat untuk setiap pemesanan</p>
                                     </div>
                                 </li>
                                 <li class="iconbox-item">
@@ -288,8 +276,8 @@
                                         </svg>
                                     </div>
                                     <div class="iconbox-content">
-                                        <h4 class="iconbox-title">Pengembalian 30 Hari</h4>
-                                        <p class="iconbox-desc">Anda memiliki 30 hari untuk mengembalikan</p>
+                                        <h4 class="iconbox-title">Dijamin Puas</h4>
+                                        <p class="iconbox-desc">Anda pasti puas dengan produk kami</p>
                                     </div>
                                 </li>
                             </ul>
@@ -372,8 +360,8 @@ const isRefreshing = ref(false);
 
 // Computed property for filtered products with pagination
 const filteredProducts = computed(() => {
-    let result = selectedCategoryId.value === null 
-        ? products.value 
+    let result = selectedCategoryId.value === null
+        ? products.value
         : products.value.filter(product =>
             product.kategori && product.kategori.id === selectedCategoryId.value
         );
@@ -386,7 +374,7 @@ const filteredProducts = computed(() => {
     }
 
     // Apply price range filter
-    result = result.filter(product => 
+    result = result.filter(product =>
         product.harga >= priceRange.value.min && product.harga <= priceRange.value.max
     );
 
@@ -399,25 +387,25 @@ const filteredProducts = computed(() => {
                 aValue = a.nama_produk.toLowerCase();
                 bValue = b.nama_produk.toLowerCase();
                 return aValue.localeCompare(bValue);
-            
+
             case 'nama_produk_desc':
                 aValue = a.nama_produk.toLowerCase();
                 bValue = b.nama_produk.toLowerCase();
                 return bValue.localeCompare(aValue);
-            
+
             case 'harga_asc':
                 return a.harga - b.harga;
-            
+
             case 'harga_desc':
                 return b.harga - a.harga;
-            
+
             case 'created_at':
                 if (sortOrder.value === 'asc') {
                     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
                 } else {
                     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
                 }
-            
+
             default:
                 // Default to oldest first
                 return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -446,7 +434,7 @@ const visiblePages = computed(() => {
     const total = totalPages.value;
     const current = currentPage.value;
     const maxVisible = 5;
-    
+
     if (total <= maxVisible) {
         for (let i = 1; i <= total; i++) {
             pages.push(i);
@@ -454,24 +442,24 @@ const visiblePages = computed(() => {
     } else {
         let start = Math.max(1, current - Math.floor(maxVisible / 2));
         let end = Math.min(total, start + maxVisible - 1);
-        
+
         // Adjust start if we're near the end
         if (end - start < maxVisible - 1) {
             start = Math.max(1, end - maxVisible + 1);
         }
-        
+
         for (let i = start; i <= end; i++) {
             pages.push(i);
         }
     }
-    
+
     return pages;
 });
 
 // Optimized fetch products with pagination support
 const fetchProducts = async (page = 1, limit = 50) => {
     if (isLoading.value && !isRefreshing.value) return;
-    
+
     isLoading.value = true;
     errorMessage.value = '';
 
@@ -504,9 +492,9 @@ const fetchProducts = async (page = 1, limit = 50) => {
         } else {
             products.value = [...products.value, ...(data || [])];
         }
-        
+
         totalProducts.value = count || 0;
-        
+
         // Update price range based on actual product data
         if (products.value.length > 0) {
             const prices = products.value.map(p => p.harga);
@@ -517,7 +505,7 @@ const fetchProducts = async (page = 1, limit = 50) => {
 
         // Preload images for better UX
         preloadImages(data || []);
-        
+
     } catch (error: any) {
         errorMessage.value = `Error fetching products: ${error.message}`;
         console.error('Error fetching products:', error);
@@ -589,12 +577,12 @@ const preloadImages = (productList: any[]) => {
 
 const getOptimizedImageUrl = (url: string, width = 400, height = 400, quality = 80) => {
     if (!url) return '/user/images/products/placeholder.jpg';
-    
+
     // For Supabase storage, we can add transformation parameters
     if (url.includes('supabase')) {
         return `${url}?width=${width}&height=${height}&quality=${quality}&format=webp`;
     }
-    
+
     return url;
 };
 
@@ -619,9 +607,9 @@ const hasImageError = (url: string) => {
 // Pagination functions
 const changePage = (page: number) => {
     if (page < 1 || page > totalPages.value || page === currentPage.value) return;
-    
+
     currentPage.value = page;
-    
+
     // Scroll to top of products section
     const element = document.getElementById('gridLayout') || document.getElementById('listLayout');
     if (element) {
@@ -639,7 +627,7 @@ const debouncedRefresh = () => {
     if (debounceTimer.value) {
         clearTimeout(debounceTimer.value);
     }
-    
+
     debounceTimer.value = setTimeout(() => {
         currentPage.value = 1;
         isRefreshing.value = true;
@@ -655,7 +643,7 @@ const setupLazyLoading = () => {
                 if (entry.isIntersecting) {
                     const img = entry.target as HTMLImageElement;
                     const src = img.dataset.src;
-                    
+
                     if (src) {
                         img.src = src;
                         img.classList.remove('lazy');
@@ -753,7 +741,7 @@ const addToCart = (product: any) => {
 
 const openQuickAddModal = (product: any) => {
     selectedProductForQuickAdd.value = product;
-    
+
     // Show the modal using Bootstrap
     setTimeout(() => {
         const modal = document.getElementById('quick_add');
@@ -791,7 +779,7 @@ const viewProductDetail = (productId: number) => {
 
 const openQuickViewModal = (product: any) => {
     selectedProductForQuickView.value = product;
-    
+
     // Show the modal using Bootstrap
     setTimeout(() => {
         const modal = document.getElementById('quick_view');
@@ -838,11 +826,11 @@ function initializeShopLayoutSwitcher() {
     $('.select-item').on('click', function (this: HTMLElement) {
         const sortText = $(this).find('.text-value-item').text();
         const sortValue = $(this).data('sort-value');
-        
+
         $('.select-item').removeClass('active');
         $(this).addClass('active');
         $('.text-sort-value').text(sortText);
-        
+
         // Apply sorting if sort value exists
         if (sortValue) {
             applySorting(sortValue);
@@ -943,8 +931,13 @@ function setGridLayout(layoutClass: string) {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .image-placeholder {
@@ -1045,7 +1038,8 @@ function setGridLayout(layoutClass: string) {
     padding: 60px 20px;
     color: #6c757d;
     font-size: 16px;
-    grid-column: 1 / -1; /* Span all columns in grid */
+    grid-column: 1 / -1;
+    /* Span all columns in grid */
 }
 
 .error-message {
@@ -1073,14 +1067,14 @@ function setGridLayout(layoutClass: string) {
     .pagination-info {
         font-size: 12px;
     }
-    
+
     .pagination-link {
         min-width: 36px;
         height: 36px;
         padding: 6px 10px;
         font-size: 14px;
     }
-    
+
     .wg-pagination {
         gap: 4px;
         margin: 16px 0;
@@ -1099,7 +1093,7 @@ function setGridLayout(layoutClass: string) {
     .image-placeholder {
         height: 150px;
     }
-    
+
     .image-placeholder i {
         font-size: 32px;
     }

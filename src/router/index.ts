@@ -230,6 +230,17 @@ const router = createRouter({
           }
         },
         {
+          path: 'edit-produk/:id', // Edit product route
+          name: 'edit produk',
+          component: () => import('@/views/admin/AdminEditProductView.vue'),
+          props: true,
+          meta: {
+            title: 'Edit Produk | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
           path: 'list-kategori', // Default child route
           name: 'list kategori',
           component: AdminCategory,
@@ -278,6 +289,17 @@ const router = createRouter({
           component: AdminAddCategoryView,
           meta: {
             title: 'Tambah kategori | Priangan Florist',
+            requiresAuth: true,
+            requiresAdmin: true
+          }
+        },
+        {
+          path: 'edit-kategori/:id', // Edit category route
+          name: 'edit kategori',
+          component: AdminAddCategoryView,
+          props: true,
+          meta: {
+            title: 'Edit Kategori | Priangan Florist',
             requiresAuth: true,
             requiresAdmin: true
           }

@@ -1,12 +1,7 @@
 <template>
-
-
-
-    <AdminAddCategory></AdminAddCategory>
+    <AdminEditCategory></AdminEditCategory>
 </template>
 
-
 <script setup lang="ts">
-import AdminAddCategory from '@/components/admin/adminAddCategory.vue';
-
+import AdminEditCategory from '@/components/admin/adminEditCategory.vue';
 </script>
