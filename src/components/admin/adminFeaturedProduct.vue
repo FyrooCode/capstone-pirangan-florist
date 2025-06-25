@@ -4,11 +4,12 @@
             <div class="main-content-wrap">
                 <div class="flex items-center flex-wrap justify-between gap20 mb-30">
                     <h3>Featured Products Management</h3>
-                </div>                <!-- Add Featured Product Form -->
+                </div> <!-- Add Featured Product Form -->
                 <div class="wg-box mb-30">
                     <div class="title-box">
                         <i class="icon-star"></i>
-                        <div class="body-text">Select products to feature on your homepage. You can add multiple products at once by selecting them and clicking "Add Selected to Featured".</div>
+                        <div class="body-text">Select products to feature on your homepage. You can add multiple
+                            products at once by selecting them and clicking "Add Selected to Featured".</div>
                     </div>
                     <div class="flex items-center justify-between gap10 flex-wrap mb-20">
                         <div class="wg-filter flex-grow">
@@ -28,14 +29,14 @@
                                     <input v-model="searchQuery" type="text" placeholder="Search products..." class=""
                                         name="name" tabindex="2" aria-required="true">
                                 </fieldset>
-                                <div class="button-submit">
-                                    <button class="" type="submit"><i class="icon-search"></i></button>
-                                </div>
+
                             </form>
                         </div>
                         <div class="flex gap10">
-                            <button @click="addSelectedToFeatured" :disabled="selectedProducts.length === 0 || isLoading" class="tf-button">
-                                <i class="icon-plus"></i>{{ isLoading ? 'Adding...' : `Add Selected (${selectedProducts.length})` }}
+                            <button @click="addSelectedToFeatured"
+                                :disabled="selectedProducts.length === 0 || isLoading" class="tf-button">
+                                <i class="icon-plus"></i>{{ isLoading ? 'Adding...' : `Add Selected
+                                (${selectedProducts.length})` }}
                             </button>
                         </div>
                     </div>
@@ -43,7 +44,8 @@
                     <!-- Available Products Table -->
                     <div v-if="availableProducts.length === 0" class="text-center py-40">
                         <p>All products are already featured or no products available.</p>
-                    </div>                    <div v-else class="wg-table table-product-list">
+                    </div>
+                    <div v-else class="wg-table table-product-list">
                         <ul class="table-title flex gap20 mb-14">
                             <li style="width: 50px;">
                                 <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" />
@@ -62,7 +64,8 @@
                             </li>
                         </ul>
                         <ul class="flex flex-column">
-                            <li v-for="product in paginatedAvailableProducts" :key="product.id" class="wg-product item-row flex gap20">
+                            <li v-for="product in paginatedAvailableProducts" :key="product.id"
+                                class="wg-product item-row flex gap20">
                                 <div style="width: 50px; display: flex; justify-content: center;">
                                     <input type="checkbox" :value="product.id" v-model="selectedProducts" />
                                 </div>
@@ -80,11 +83,13 @@
                                         <span class="body-text">{{ product.nama_produk }}</span>
                                     </div>
                                 </div>
-                                <div class="body-text text-main-dark" style="width: 120px;">{{ formatPrice(product.harga) }}</div>
-                                <div class="body-text text-main-dark" style="width: 80px; text-align: center;">{{ product.stok }}</div>
+                                <div class="body-text text-main-dark" style="width: 120px;">{{
+                                    formatPrice(product.harga) }}</div>
+                                <div class="body-text text-main-dark" style="width: 80px; text-align: center;">{{
+                                    product.stok }}</div>
                                 <div class="body-text text-main-dark" style="width: 120px; text-align: center;">
-                                    <input v-model.number="productDisplayOrders[product.id]" type="number" min="0" 
-                                           style="width: 80px;" placeholder="0" />
+                                    <input v-model.number="productDisplayOrders[product.id]" type="number" min="0"
+                                        style="width: 80px;" placeholder="0" />
                                 </div>
                             </li>
                         </ul>
@@ -93,7 +98,8 @@
                     <!-- Pagination for Available Products -->
                     <div v-if="totalAvailablePages > 1" class="divider"></div>
                     <div v-if="totalAvailablePages > 1" class="flex items-center justify-between flex-wrap gap10">
-                        <div class="text-tiny">Showing {{ availableStartIndex + 1 }}-{{ availableEndIndex }} of {{ filteredAvailableProducts.length }} entries</div>
+                        <div class="text-tiny">Showing {{ availableStartIndex + 1 }}-{{ availableEndIndex }} of {{
+                            filteredAvailableProducts.length }} entries</div>
                         <ul class="wg-pagination">
                             <li>
                                 <a href="#" @click.prevent="goToAvailablePage(currentPage - 1)"
@@ -101,7 +107,8 @@
                                     <i class="icon-chevron-left"></i>
                                 </a>
                             </li>
-                            <li v-for="page in visibleAvailablePages" :key="page" :class="{ active: page === currentPage }">
+                            <li v-for="page in visibleAvailablePages" :key="page"
+                                :class="{ active: page === currentPage }">
                                 <a href="#" @click.prevent="goToAvailablePage(page)">{{ page }}</a>
                             </li>
                             <li>
@@ -119,10 +126,11 @@
                     <div class="flex items-center justify-between">
                         <div class="body-title mb-20">Current Featured Products</div>
                     </div>
-                    
+
                     <div v-if="featuredProducts.length === 0" class="text-center py-40">
                         <p>No featured products yet. Add some products to display on the homepage.</p>
-                    </div>                    <div v-else class="wg-table table-product-list featured-products-table">
+                    </div>
+                    <div v-else class="wg-table table-product-list featured-products-table">
                         <ul class="table-title table-header-grid mb-14">
                             <li class="product-col">
                                 <div class="body-title">Product</div>
@@ -141,7 +149,8 @@
                             </li>
                         </ul>
                         <ul class="flex flex-column">
-                            <li v-for="featured in featuredProducts" :key="featured.id" class="wg-product table-row-grid">
+                            <li v-for="featured in featuredProducts" :key="featured.id"
+                                class="wg-product table-row-grid">
                                 <div class="product-col name">
                                     <div class="image">
                                         <img v-if="featured.produk?.image_urls?.[0]"
@@ -156,15 +165,12 @@
                                         <span class="body-text">{{ featured.produk?.nama_produk }}</span>
                                     </div>
                                 </div>
-                                <div class="price-col body-text text-main-dark">{{ formatPrice(featured.produk?.harga) }}</div>
+                                <div class="price-col body-text text-main-dark">{{ formatPrice(featured.produk?.harga)
+                                    }}</div>
                                 <div class="order-col body-text text-main-dark">
-                                    <input 
-                                        v-model.number="featured.display_order" 
-                                        @change="updateDisplayOrder(featured.id, featured.display_order)"
-                                        type="number" 
-                                        min="0" 
-                                        style="width: 70px;"
-                                    />
+                                    <input v-model.number="featured.display_order"
+                                        @change="updateDisplayOrder(featured.id, featured.display_order)" type="number"
+                                        min="0" style="width: 70px;" />
                                 </div>
                                 <div class="status-col body-text text-main-dark">
                                     <div v-if="featured.is_active" class="block-available bg-1 fw-7">Active</div>
@@ -341,7 +347,7 @@ const addSelectedToFeatured = async () => {
         if (error) throw error;
 
         showModal('success', 'Success', `${selectedProducts.value.length} product(s) added to featured successfully!`);
-        
+
         // Reset selections and refresh data
         selectedProducts.value = [];
         selectAll.value = false;
@@ -406,9 +412,9 @@ const fetchAvailableProducts = async () => {
         if (featuredError) throw featuredError;
 
         const featuredIds = featured.map(f => f.product_id);
-        
+
         // Filter out already featured products
-        availableProducts.value = allProducts.filter(product => 
+        availableProducts.value = allProducts.filter(product =>
             !featuredIds.includes(product.id)
         );
 
@@ -469,7 +475,7 @@ const addFeaturedProduct = async () => {
         if (error) throw error;
 
         showModal('success', 'Success', 'Product added to featured successfully!');
-        
+
         // Reset form and refresh data
         selectedProductId.value = null;
         displayOrder.value = 0;
@@ -745,7 +751,8 @@ onMounted(async () => {
 }
 
 .featured-products-table .product-col {
-    min-width: 0; /* Allows text truncation */
+    min-width: 0;
+    /* Allows text truncation */
 }
 
 .featured-products-table .price-col {

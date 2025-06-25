@@ -98,10 +98,10 @@
         </div>
         <div class="col-xl-3 col-md-4 col-3">
           <ul class="nav-icon d-flex justify-content-end align-items-center gap-20">
-            <li class="nav-search">
+            <!-- <li class="nav-search">
               <a href="home-plant.html#canvasSearch" data-bs-toggle="offcanvas" aria-controls="offcanvasLeft"
                 class="link nav-icon-item text_green-1"><i class="icon icon-search"></i></a>
-            </li>
+            </li> -->
             <li class="nav-account" v-if="!authStore.isLoggedIn">
               <a href="#login" data-bs-toggle="modal" class="link nav-icon-item text_green-1">
                 <i class="icon icon-account"></i>
